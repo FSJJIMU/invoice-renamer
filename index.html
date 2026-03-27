@@ -310,21 +310,49 @@
   #exec-btn:hover:not(:disabled) { background: var(--accent2); }
   #exec-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  #dl-all-btn {
-    background: var(--card);
-    color: var(--accent);
+  #dl-one-btn, #dl-zip-btn {
     font-family: 'Yu Gothic UI', sans-serif;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
-    border: 1px solid var(--accent);
     border-radius: 8px;
-    padding: 0 24px;
+    padding: 0 28px;
     height: 42px;
     cursor: pointer;
-    display: none;
-    transition: background 0.15s;
+    transition: background 0.15s, opacity 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  #dl-all-btn:hover { background: #1a1800; }
+  #dl-one-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+  }
+  #dl-one-btn:hover:not(:disabled) { background: var(--accent2); }
+  #dl-zip-btn {
+    background: var(--card);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  #dl-zip-btn:hover:not(:disabled) { background: #1a1800; }
+  #dl-one-btn:disabled, #dl-zip-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  #back-btn {
+    background: transparent;
+    color: var(--muted2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0 16px;
+    height: 42px;
+    font-family: 'Yu Gothic UI', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #back-btn:hover { background: var(--border); color: var(--text); }
 
   #status-lbl {
     font-family: 'Courier New', monospace;
@@ -395,24 +423,25 @@
     <span>請求書名義</span>
     <span>請求金額</span>
     <span>請求の有無</span>
-    <span>日付 (yyyymmdd)</span>
+    <span>日付</span>
     <span>訂正分</span>
     <span>新ファイル名プレビュー</span>
     <span></span>
   </div>
 
   <!-- ROWS -->
-  <div id="rows-container">
-    <div id="empty-state">
-      <div class="icon">📂</div>
-      <div>PDFファイルをドロップしてください</div>
-    </div>
-  </div>
+  <div id="rows-container"></div>
 </main>
 
 <footer>
-  <button id="exec-btn" disabled>▶ &nbsp; ダウンロード実行</button>
-  <button id="dl-all-btn">📦 &nbsp; ZIPでまとめてDL</button>
+  <div id="footer-rename">
+    <button id="exec-btn" disabled>▶ &nbsp; リネーム実行</button>
+  </div>
+  <div id="footer-dl" style="display:none; align-items:center; gap:16px;">
+    <button id="dl-one-btn">1件ずつダウンロード</button>
+    <button id="dl-zip-btn">ZIPにまとめてDL</button>
+    <button id="back-btn">← 戻る</button>
+  </div>
   <span id="status-lbl"></span>
 </footer>
 
@@ -425,18 +454,21 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 let pdfRows = [];
 
 // ── DOM refs ──
-const dropzone    = document.getElementById('dropzone');
-const fileInput   = document.getElementById('file-input');
-const progWrap    = document.getElementById('prog-wrap');
-const progBar     = document.getElementById('prog-bar');
-const progLabel   = document.getElementById('prog-label');
-const countLbl    = document.getElementById('count-lbl');
-const dupLbl      = document.getElementById('dup-lbl');
+const dropzone      = document.getElementById('dropzone');
+const fileInput     = document.getElementById('file-input');
+const progWrap      = document.getElementById('prog-wrap');
+const progBar       = document.getElementById('prog-bar');
+const progLabel     = document.getElementById('prog-label');
+const countLbl      = document.getElementById('count-lbl');
+const dupLbl        = document.getElementById('dup-lbl');
 const rowsContainer = document.getElementById('rows-container');
-const execBtn     = document.getElementById('exec-btn');
-const dlAllBtn    = document.getElementById('dl-all-btn');
-const statusLbl   = document.getElementById('status-lbl');
-const emptyState  = document.getElementById('rows-container').querySelector('#empty-state');
+const execBtn       = document.getElementById('exec-btn');
+const footerRename  = document.getElementById('footer-rename');
+const footerDl      = document.getElementById('footer-dl');
+const dlOneBtn      = document.getElementById('dl-one-btn');
+const dlZipBtn      = document.getElementById('dl-zip-btn');
+const backBtn       = document.getElementById('back-btn');
+const statusLbl     = document.getElementById('status-lbl');
 
 // ── Drag & Drop ──
 dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
@@ -582,7 +614,7 @@ async function processFiles(files) {
 function renderRows() {
   rowsContainer.innerHTML = '';
   if (pdfRows.length === 0) {
-    rowsContainer.innerHTML = `<div id="empty-state"><div class="icon">📂</div><div>PDFファイルをドロップしてください</div></div>`;
+    rowsContainer.innerHTML = '';
     countLbl.textContent = '';
     dupLbl.textContent = '';
     execBtn.disabled = true;
@@ -601,7 +633,6 @@ function renderRows() {
 
   const ready = pdfRows.some(r => r.name && r.date);
   execBtn.disabled = !ready;
-  if (ready) dlAllBtn.style.display = 'inline-flex';
 }
 
 function addRow(idx) {
@@ -673,7 +704,6 @@ function addRow(idx) {
 
     const ready = pdfRows.some(r => r.name && r.date);
     execBtn.disabled = !ready;
-    dlAllBtn.style.display = ready ? 'inline-flex' : 'none';
 
     const dupTotal = pdfRows.filter(r => r.dupPrefix && r.dupPrefix !== '').length;
     dupLbl.textContent = dupTotal > 0 ? `  ⚠ 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
@@ -712,53 +742,63 @@ function downloadFile(r) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// ── ダウンロード実行（順次） ──
-execBtn.addEventListener('click', async () => {
+// ── リネーム実行 → DLフェーズへ切り替え ──
+execBtn.addEventListener('click', () => {
   const items = pdfRows.filter(r => r.name && r.date);
   if (!items.length) return;
+  footerRename.style.display = 'none';
+  footerDl.style.display = 'flex';
+  statusLbl.textContent = '';
+  statusLbl.style.color = 'var(--muted2)';
+});
 
-  statusLbl.textContent = `処理中…`;
-  execBtn.disabled = true;
+// ── 戻る ──
+backBtn.addEventListener('click', () => {
+  footerDl.style.display = 'none';
+  footerRename.style.display = 'flex';
+  statusLbl.textContent = '';
+});
 
-  // 順次ダウンロード（ブラウザのブロック対策）
+// ── 1件ずつダウンロード ──
+dlOneBtn.addEventListener('click', async () => {
+  const items = pdfRows.filter(r => r.name && r.date);
+  if (!items.length) return;
+  dlOneBtn.disabled = true;
+  dlZipBtn.disabled = true;
+  statusLbl.textContent = '処理中…';
   for (let i = 0; i < items.length; i++) {
     await new Promise(res => setTimeout(res, i === 0 ? 0 : 300));
     downloadFile(items[i]);
     statusLbl.textContent = `ダウンロード中 ${i + 1}/${items.length}`;
   }
-
   statusLbl.textContent = `✓  ${items.length}件 完了`;
   statusLbl.style.color = 'var(--success)';
-  execBtn.disabled = false;
+  dlOneBtn.disabled = false;
+  dlZipBtn.disabled = false;
 });
 
-// ── ZIP一括DL ──
-dlAllBtn.addEventListener('click', async () => {
+// ── ZIPにまとめてDL ──
+dlZipBtn.addEventListener('click', async () => {
   const items = pdfRows.filter(r => r.name && r.date);
   if (!items.length) return;
-
-  // JSZip をCDNから動的ロード
   if (!window.JSZip) {
     statusLbl.textContent = 'ZIPライブラリを読み込み中…';
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
   }
-
   statusLbl.textContent = 'ZIP作成中…';
   statusLbl.style.color = 'var(--muted2)';
-  dlAllBtn.disabled = true;
-
+  dlOneBtn.disabled = true;
+  dlZipBtn.disabled = true;
   const zip = new JSZip();
   for (const r of items) {
     const fn = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
     const buf = await r.file.arrayBuffer();
     zip.file(fn, buf);
   }
-
   const blob = await zip.generateAsync({ type: 'blob' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  // フォルダ名：最初のアイテムの日付から「{日}日稼働分.zip」
   const firstDate = items[0].date || '';
   const day = firstDate.length >= 8 ? parseInt(firstDate.slice(6, 8)) : '';
   a.download = day ? `${day}日稼働分.zip` : '日払い請求書.zip';
@@ -766,10 +806,10 @@ dlAllBtn.addEventListener('click', async () => {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 2000);
-
   statusLbl.textContent = `✓  ZIP完了 (${items.length}件)`;
   statusLbl.style.color = 'var(--success)';
-  dlAllBtn.disabled = false;
+  dlOneBtn.disabled = false;
+  dlZipBtn.disabled = false;
 });
 
 // ── Script動的ロード ──
