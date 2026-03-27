@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日払い請求書リネームツール｜FIVE-STAR JAPAN</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root {
+    --bg:      #0a0a0a;
+    --panel:   #111111;
+    --card:    #161616;
+    --border:  #242424;
+    --accent:  #E8C547;
+    --accent2: #c9a82e;
+    --blue:    #3eb8c8;
+    --danger:  #e05252;
+    --success: #3dba5f;
+    --text:    #f0f0f0;
+    --muted:   #555555;
+    --muted2:  #888888;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Yu Gothic UI', 'Meiryo', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--panel);
+    padding: 0 28px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    border-bottom: 2px solid var(--accent);
+    flex-shrink: 0;
+  }
+  .header-label {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+  }
+  .header-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* ── MAIN ── */
+  main {
+    flex: 1;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 1300px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  /* ── DROPZONE ── */
+  #dropzone {
+    background: var(--card);
+    border: 1.5px dashed var(--border);
+    border-radius: 10px;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  #dropzone:hover, #dropzone.drag-over {
+    border-color: var(--accent);
+    background: #1a1800;
+  }
+  #dropzone-label {
+    font-size: 15px;
+    color: var(--muted2);
+    pointer-events: none;
+    user-select: none;
+  }
+  #file-input { display: none; }
+
+  /* ── PROGRESS ── */
+  #prog-wrap { display: none; flex-direction: column; gap: 4px; }
+  #prog-bar-bg {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  #prog-bar {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.2s;
+  }
+  #prog-label {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--muted2);
+    text-align: center;
+  }
+
+  /* ── TABLE HEADER ── */
+  #table-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 28px;
+  }
+  #count-lbl {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  #dup-lbl {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--danger);
+  }
+
+  .col-header {
+    background: var(--panel);
+    border-radius: 4px;
+    display: grid;
+    grid-template-columns: 180px 130px 85px 90px 150px 80px 1fr 36px;
+    align-items: center;
+    padding: 0 10px;
+    height: 30px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .col-header span {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--muted2);
+  }
+
+  /* ── ROWS ── */
+  #rows-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-height: 0;
+  }
+
+  .pdf-row {
+    background: var(--card);
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: 180px 130px 85px 90px 150px 80px 1fr 36px;
+    align-items: center;
+    padding: 0 10px;
+    height: 52px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .pdf-row:nth-child(even) { background: var(--panel); }
+
+  /* 元ファイル名セル */
+  .cell-orig {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .cell-orig .fname {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--muted2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cell-orig .tag-status {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .tag-ok  { color: var(--success); }
+  .tag-ng  { color: var(--danger); }
+  .tag-warn{ color: #f0a020; }
+
+  /* Inputs */
+  input[type="text"], input[type="number"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Yu Gothic UI', sans-serif;
+    font-size: 13px;
+    padding: 0 8px;
+    height: 30px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="number"] {
+    font-family: 'Courier New', monospace;
+    text-align: right;
+  }
+  input:focus { border-color: var(--accent); }
+
+  /* 請求の有無ボタン */
+  .x-btn {
+    height: 28px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--muted2);
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+    white-space: nowrap;
+  }
+  .x-btn.is-x {
+    background: #2d1a1a;
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  /* 訂正分チェック */
+  .corr-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .corr-wrap input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
+  .corr-wrap span {
+    font-size: 12px;
+    color: var(--muted2);
+    user-select: none;
+  }
+
+  /* プレビュー */
+  .cell-preview {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--blue);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cell-preview.is-x { color: var(--danger); }
+
+  /* 削除ボタン */
+  .del-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .del-btn:hover { background: var(--border); color: var(--danger); }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    flex-shrink: 0;
+  }
+  #exec-btn {
+    background: var(--accent);
+    color: #000;
+    font-family: 'Yu Gothic UI', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    padding: 0 32px;
+    height: 42px;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  #exec-btn:hover:not(:disabled) { background: var(--accent2); }
+  #exec-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  #dl-all-btn {
+    background: var(--card);
+    color: var(--accent);
+    font-family: 'Yu Gothic UI', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 0 24px;
+    height: 42px;
+    cursor: pointer;
+    display: none;
+    transition: background 0.15s;
+  }
+  #dl-all-btn:hover { background: #1a1800; }
+
+  #status-lbl {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--muted2);
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ── EMPTY STATE ── */
+  #empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    color: var(--muted);
+    font-size: 14px;
+    gap: 8px;
+    padding: 40px;
+  }
+  #empty-state .icon { font-size: 40px; opacity: 0.4; }
+
+  /* date input */
+  input[type="text"].date-input {
+    color: var(--blue);
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+  }
+  input::placeholder { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="header-label">FIVE-STAR JAPAN</div>
+    <div class="header-title">日払い請求書リネームツール</div>
+  </div>
+</header>
+
+<main>
+  <!-- DROPZONE -->
+  <div id="dropzone" onclick="document.getElementById('file-input').click()">
+    <span id="dropzone-label">📄 &nbsp; PDFをここにドラッグ＆ドロップ　／　クリックしてファイルを選択</span>
+    <input type="file" id="file-input" accept=".pdf" multiple>
+  </div>
+
+  <!-- PROGRESS -->
+  <div id="prog-wrap">
+    <div id="prog-bar-bg"><div id="prog-bar"></div></div>
+    <div id="prog-label"></div>
+  </div>
+
+  <!-- TABLE META -->
+  <div id="table-meta">
+    <span id="count-lbl"></span>
+    <span id="dup-lbl"></span>
+  </div>
+
+  <!-- COL HEADER -->
+  <div class="col-header">
+    <span>元ファイル名</span>
+    <span>請求書名義</span>
+    <span>請求金額</span>
+    <span>請求の有無</span>
+    <span>日付 (yyyymmdd)</span>
+    <span>訂正分</span>
+    <span>新ファイル名プレビュー</span>
+    <span></span>
+  </div>
+
+  <!-- ROWS -->
+  <div id="rows-container">
+    <div id="empty-state">
+      <div class="icon">📂</div>
+      <div>PDFファイルをドロップしてください</div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <button id="exec-btn" disabled>▶ &nbsp; ダウンロード実行</button>
+  <button id="dl-all-btn">📦 &nbsp; ZIPでまとめてDL</button>
+  <span id="status-lbl"></span>
+</footer>
+
+<script>
+// PDF.js worker設定
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── State ──
+let pdfRows = [];
+
+// ── DOM refs ──
+const dropzone    = document.getElementById('dropzone');
+const fileInput   = document.getElementById('file-input');
+const progWrap    = document.getElementById('prog-wrap');
+const progBar     = document.getElementById('prog-bar');
+const progLabel   = document.getElementById('prog-label');
+const countLbl    = document.getElementById('count-lbl');
+const dupLbl      = document.getElementById('dup-lbl');
+const rowsContainer = document.getElementById('rows-container');
+const execBtn     = document.getElementById('exec-btn');
+const dlAllBtn    = document.getElementById('dl-all-btn');
+const statusLbl   = document.getElementById('status-lbl');
+const emptyState  = document.getElementById('rows-container').querySelector('#empty-state');
+
+// ── Drag & Drop ──
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  const files = [...e.dataTransfer.files].filter(f => f.name.toLowerCase().endsWith('.pdf'));
+  if (files.length) processFiles(files);
+});
+fileInput.addEventListener('change', () => {
+  const files = [...fileInput.files];
+  if (files.length) processFiles(files);
+  fileInput.value = '';
+});
+
+// ── テキスト正規化 ──
+function normalize(text) {
+  // 全角スペース・半角スペース除去
+  text = text.replace(/[\s\u3000]/g, '');
+  // 全角記号→半角
+  text = text.replace(/＃/g, '#').replace(/：/g, ':');
+  // 全角数字→半角
+  text = text.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  return text;
+}
+
+// ── タグパース ──
+function parseTag(rawText) {
+  const c = normalize(rawText);
+  const idx = c.indexOf('##INV');
+  const raw = idx >= 0 ? c.slice(idx, idx + 60) : '（タグなし）';
+
+  // パターン1: 8桁日付
+  let m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8})##/i);
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], found: true, raw };
+
+  // パターン2: 7桁日付（月が1桁）→ 0補完
+  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7})##/i);
+  if (m) {
+    const d = m[3];
+    const date = d.slice(0, 4) + '0' + d.slice(4);
+    return { name: m[1], amount: parseInt(m[2]), date, found: true, raw };
+  }
+
+  // パターン3: 日付なし
+  m = c.match(/##INV:([^:#]+):(-?\d+)##/i);
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: null, found: true, raw };
+
+  return { name: '', amount: -1, date: null, found: false, raw };
+}
+
+// ── PDF テキスト抽出 ──
+async function extractText(file) {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map(item => item.str).join('');
+    }
+    return text;
+  } catch (e) {
+    return '';
+  }
+}
+
+// ── ファイル名生成 ──
+function buildFilename(name, amount, date, isX, isCorrection, dupPrefix) {
+  const prefix = isX ? '×' : '';
+  const dateStr = date || '????????';
+  let base = `${prefix}日払い請求書${dateStr}${name}様`;
+  if (isCorrection) base += ' 訂正分';
+  if (dupPrefix) base = dupPrefix + ' ' + base;
+  return base + '.pdf';
+}
+
+// ── 重複検出 ──
+function detectDuplicates(rows) {
+  const nameCount = {};
+  rows.forEach(r => {
+    const key = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '');
+    nameCount[key] = (nameCount[key] || 0) + 1;
+  });
+  const tracker = {};
+  let dupTotal = 0;
+  rows.forEach(r => {
+    const key = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '');
+    if (nameCount[key] > 1) {
+      tracker[key] = (tracker[key] || 0) + 1;
+      r.dupPrefix = tracker[key] === 1 ? '' : `※重複データ${tracker[key] - 1}`;
+      if (tracker[key] > 1) dupTotal++;
+    } else {
+      r.dupPrefix = '';
+    }
+  });
+  return dupTotal;
+}
+
+// ── ファイル処理 ──
+async function processFiles(files) {
+  pdfRows = [];
+  rowsContainer.innerHTML = '';
+  execBtn.disabled = true;
+  dlAllBtn.style.display = 'none';
+  statusLbl.textContent = '';
+  countLbl.textContent = '解析中…';
+  dupLbl.textContent = '';
+  progWrap.style.display = 'flex';
+  progBar.style.width = '0%';
+
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    progBar.style.width = `${Math.round(i / files.length * 100)}%`;
+    progLabel.textContent = `解析中 ${i + 1}/${files.length}  ${f.name}`;
+
+    const text = await extractText(f);
+    const p = parseTag(text);
+    pdfRows.push({
+      file: f,
+      orig: f.name,
+      name: p.name,
+      amount: p.amount,
+      date: p.date,
+      isX: p.amount === 0,
+      isCorrection: false,
+      found: p.found,
+      raw: p.raw,
+      dupPrefix: ''
+    });
+  }
+
+  progBar.style.width = '100%';
+  progLabel.textContent = '';
+  setTimeout(() => { progWrap.style.display = 'none'; }, 400);
+
+  renderRows();
+}
+
+// ── レンダリング ──
+function renderRows() {
+  rowsContainer.innerHTML = '';
+  if (pdfRows.length === 0) {
+    rowsContainer.innerHTML = `<div id="empty-state"><div class="icon">📂</div><div>PDFファイルをドロップしてください</div></div>`;
+    countLbl.textContent = '';
+    dupLbl.textContent = '';
+    execBtn.disabled = true;
+    dlAllBtn.style.display = 'none';
+    return;
+  }
+
+  const dupTotal = detectDuplicates(pdfRows);
+  const found = pdfRows.filter(r => r.found).length;
+  const notFound = pdfRows.length - found;
+
+  countLbl.textContent = `  ${found}件 タグ自動検出` + (notFound ? `  ／  ${notFound}件 タグなし` : '');
+  dupLbl.textContent = dupTotal > 0 ? `  ⚠ 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
+
+  pdfRows.forEach((r, idx) => addRow(idx));
+
+  const ready = pdfRows.some(r => r.name && r.date);
+  execBtn.disabled = !ready;
+  if (ready) dlAllBtn.style.display = 'inline-flex';
+}
+
+function addRow(idx) {
+  const r = pdfRows[idx];
+  const fname = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
+
+  const row = document.createElement('div');
+  row.className = 'pdf-row';
+  row.dataset.idx = idx;
+
+  // タグ状態テキスト
+  let tagClass, tagText;
+  if (r.found && r.date) { tagClass = 'tag-ok'; tagText = '✓ タグ検出  📅 ' + r.date; }
+  else if (r.found)       { tagClass = 'tag-warn'; tagText = '✓ タグ検出  ⚠ 日付なし'; }
+  else                     { tagClass = 'tag-ng'; tagText = '✗ タグなし'; }
+
+  const amtDisplay = r.amount !== -1 ? r.amount : '';
+  const isXClass = r.isX ? 'is-x' : '';
+  const xText = r.isX ? '請求なし' : '請求あり';
+  const prevClass = (r.isX || r.dupPrefix) ? 'is-x' : '';
+
+  row.innerHTML = `
+    <div class="cell-orig">
+      <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
+      <div class="tag-status ${tagClass}">${tagText}</div>
+    </div>
+    <div><input type="text" class="name-input" value="${escHtml(r.name)}" placeholder="担当者名"></div>
+    <div><input type="number" class="amt-input" value="${amtDisplay}" placeholder="0"></div>
+    <div><button class="x-btn ${isXClass}">${xText}</button></div>
+    <div><input type="text" class="date-input" value="${r.date || ''}" placeholder="yyyymmdd" maxlength="8"></div>
+    <div>
+      <label class="corr-wrap">
+        <input type="checkbox" class="corr-check" ${r.isCorrection ? 'checked' : ''}>
+        <span>訂正分</span>
+      </label>
+    </div>
+    <div class="cell-preview ${prevClass}" title="${fname}">${fname}</div>
+    <div><button class="del-btn" title="削除">✕</button></div>
+  `;
+
+  // Event listeners
+  const nameInput = row.querySelector('.name-input');
+  const amtInput  = row.querySelector('.amt-input');
+  const dateInput = row.querySelector('.date-input');
+  const xBtn      = row.querySelector('.x-btn');
+  const corrCheck = row.querySelector('.corr-check');
+  const preview   = row.querySelector('.cell-preview');
+  const delBtn    = row.querySelector('.del-btn');
+
+  const refresh = () => {
+    const name = nameInput.value.trim();
+    const amt  = amtInput.value !== '' ? parseInt(amtInput.value) : -1;
+    const date = dateInput.value.trim() || null;
+    const isX  = r.isX;
+    const isC  = corrCheck.checked;
+
+    pdfRows[idx].name = name;
+    pdfRows[idx].amount = amt;
+    pdfRows[idx].date = date;
+    pdfRows[idx].isCorrection = isC;
+    if (amt === 0 && !isX) { pdfRows[idx].isX = true; }
+
+    detectDuplicates(pdfRows);
+    const fn = buildFilename(pdfRows[idx].name, pdfRows[idx].amount, pdfRows[idx].date,
+                              pdfRows[idx].isX, pdfRows[idx].isCorrection, pdfRows[idx].dupPrefix);
+    preview.textContent = fn;
+    preview.title = fn;
+    preview.className = 'cell-preview' + ((pdfRows[idx].isX || pdfRows[idx].dupPrefix) ? ' is-x' : '');
+
+    const ready = pdfRows.some(r => r.name && r.date);
+    execBtn.disabled = !ready;
+    dlAllBtn.style.display = ready ? 'inline-flex' : 'none';
+
+    const dupTotal = pdfRows.filter(r => r.dupPrefix && r.dupPrefix !== '').length;
+    dupLbl.textContent = dupTotal > 0 ? `  ⚠ 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
+  };
+
+  xBtn.addEventListener('click', () => {
+    pdfRows[idx].isX = !pdfRows[idx].isX;
+    xBtn.textContent = pdfRows[idx].isX ? '請求なし' : '請求あり';
+    xBtn.className = 'x-btn' + (pdfRows[idx].isX ? ' is-x' : '');
+    refresh();
+  });
+
+  nameInput.addEventListener('input', refresh);
+  amtInput.addEventListener('input', refresh);
+  dateInput.addEventListener('input', refresh);
+  corrCheck.addEventListener('change', refresh);
+
+  delBtn.addEventListener('click', () => {
+    pdfRows.splice(idx, 1);
+    renderRows();
+  });
+
+  rowsContainer.appendChild(row);
+}
+
+// ── ダウンロード（個別） ──
+function downloadFile(r) {
+  const fn = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
+  const url = URL.createObjectURL(r.file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fn;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── ダウンロード実行（順次） ──
+execBtn.addEventListener('click', async () => {
+  const items = pdfRows.filter(r => r.name && r.date);
+  if (!items.length) return;
+
+  statusLbl.textContent = `処理中…`;
+  execBtn.disabled = true;
+
+  // 順次ダウンロード（ブラウザのブロック対策）
+  for (let i = 0; i < items.length; i++) {
+    await new Promise(res => setTimeout(res, i === 0 ? 0 : 300));
+    downloadFile(items[i]);
+    statusLbl.textContent = `ダウンロード中 ${i + 1}/${items.length}`;
+  }
+
+  statusLbl.textContent = `✓  ${items.length}件 完了`;
+  statusLbl.style.color = 'var(--success)';
+  execBtn.disabled = false;
+});
+
+// ── ZIP一括DL ──
+dlAllBtn.addEventListener('click', async () => {
+  const items = pdfRows.filter(r => r.name && r.date);
+  if (!items.length) return;
+
+  // JSZip をCDNから動的ロード
+  if (!window.JSZip) {
+    statusLbl.textContent = 'ZIPライブラリを読み込み中…';
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  }
+
+  statusLbl.textContent = 'ZIP作成中…';
+  statusLbl.style.color = 'var(--muted2)';
+  dlAllBtn.disabled = true;
+
+  const zip = new JSZip();
+  for (const r of items) {
+    const fn = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
+    const buf = await r.file.arrayBuffer();
+    zip.file(fn, buf);
+  }
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  // フォルダ名：最初のアイテムの日付から「{日}日稼働分.zip」
+  const firstDate = items[0].date || '';
+  const day = firstDate.length >= 8 ? parseInt(firstDate.slice(6, 8)) : '';
+  a.download = day ? `${day}日稼働分.zip` : '日払い請求書.zip';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+  statusLbl.textContent = `✓  ZIP完了 (${items.length}件)`;
+  statusLbl.style.color = 'var(--success)';
+  dlAllBtn.disabled = false;
+});
+
+// ── Script動的ロード ──
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+// ── エスケープ ──
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
