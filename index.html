@@ -575,7 +575,7 @@ async function processFiles(files) {
   pdfRows = [];
   rowsContainer.innerHTML = '';
   execBtn.disabled = true;
-  dlAllBtn.style.display = 'none';
+  
   statusLbl.textContent = '';
   countLbl.textContent = '解析中…';
   dupLbl.textContent = '';
@@ -618,7 +618,7 @@ function renderRows() {
     countLbl.textContent = '';
     dupLbl.textContent = '';
     execBtn.disabled = true;
-    dlAllBtn.style.display = 'none';
+    
     return;
   }
 
