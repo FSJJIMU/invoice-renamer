@@ -55,6 +55,32 @@
     color: var(--text);
   }
 
+  /* ── MODE SWITCH ── */
+  .mode-switch {
+    display: flex;
+    align-items: center;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px;
+    gap: 3px;
+    margin-left: 24px;
+  }
+  .mode-btn {
+    font-family: 'Yu Gothic UI', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+    background: transparent;
+    color: var(--muted2);
+  }
+  .mode-btn.active { background: var(--accent); color: #000; }
+
   /* ── MAIN ── */
   main {
     flex: 1;
@@ -120,7 +146,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    height: 28px;
+    height: 36px;
   }
   #count-lbl {
     font-family: 'Courier New', monospace;
@@ -380,6 +406,36 @@
   }
   #empty-state .icon { font-size: 40px; opacity: 0.4; }
 
+  /* ── 最終請求モード ── */
+  .col-header-final {
+    background: var(--panel);
+    border-radius: 4px;
+    display: grid;
+    grid-template-columns: 200px 200px 120px 1fr 36px;
+    align-items: center;
+    padding: 0 10px;
+    height: 30px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .col-header-final span {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--muted2);
+  }
+  .pdf-row-final {
+    background: var(--card);
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: 200px 200px 120px 1fr 36px;
+    align-items: center;
+    padding: 0 10px;
+    height: 52px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .pdf-row-final:nth-child(even) { background: var(--panel); }
+
   /* date input */
   input[type="text"].date-input {
     color: var(--blue);
@@ -394,7 +450,11 @@
 <header>
   <div>
     <div class="header-label">FIVE-STAR JAPAN</div>
-    <div class="header-title">日払い請求書リネームツール</div>
+    <div class="header-title" id="header-title">日払い請求書リネームツール</div>
+  </div>
+  <div class="mode-switch">
+    <button class="mode-btn active" id="btn-daily">日払い請求書</button>
+    <button class="mode-btn" id="btn-final">最終請求</button>
   </div>
 </header>
 
@@ -415,16 +475,52 @@
   <div id="table-meta">
     <span id="count-lbl"></span>
     <span id="dup-lbl"></span>
+    <div id="bulk-month-wrap" style="display:none; align-items:center; gap:8px; margin-left:auto;">
+      <span style="font-size:12px; color:var(--muted2); font-family:'Courier New',monospace;">対象月を一括変更：</span>
+      <input type="number" id="bulk-month-input" min="1" max="12" placeholder="月"
+        style="width:60px; height:28px; text-align:center; font-family:'Courier New',monospace;">
+      <button id="bulk-month-btn"
+        style="height:28px; padding:0 14px; background:var(--accent); color:#000;
+               font-family:'Yu Gothic UI',sans-serif; font-size:12px; font-weight:700;
+               border:none; border-radius:4px; cursor:pointer;">
+        一括適用
+      </button>
+      <span style="font-size:12px; color:var(--border); margin:0 4px;">｜</span>
+      <span style="font-size:12px; color:var(--muted2); font-family:'Courier New',monospace;">発行日を一括変更：</span>
+      <input type="text" id="bulk-date-input" placeholder="yyyymmdd" maxlength="8"
+        style="width:100px; height:28px; text-align:center; font-family:'Courier New',monospace; color:var(--blue);">
+      <button id="bulk-date-cal-btn"
+        style="height:28px; padding:0 10px; background:var(--bg); color:var(--accent);
+               font-family:'Yu Gothic UI',sans-serif; font-size:11px; font-weight:600;
+               border:1px solid var(--border); border-radius:4px; cursor:pointer;">
+        📅
+      </button>
+      <button id="bulk-date-btn"
+        style="height:28px; padding:0 14px; background:var(--accent); color:#000;
+               font-family:'Yu Gothic UI',sans-serif; font-size:12px; font-weight:700;
+               border:none; border-radius:4px; cursor:pointer;">
+        一括適用
+      </button>
+    </div>
   </div>
 
-  <!-- COL HEADER -->
-  <div class="col-header">
+  <!-- COL HEADER 日払い -->
+  <div class="col-header" id="col-header-daily">
     <span>元ファイル名</span>
     <span>請求書名義</span>
     <span>請求金額</span>
     <span>請求の有無</span>
     <span>日付</span>
     <span>訂正分</span>
+    <span>新ファイル名プレビュー</span>
+    <span></span>
+  </div>
+
+  <!-- COL HEADER 最終請求 -->
+  <div class="col-header-final" id="col-header-final" style="display:none;">
+    <span>元ファイル名</span>
+    <span>請求書名義</span>
+    <span>対象月</span>
     <span>新ファイル名プレビュー</span>
     <span></span>
   </div>
@@ -452,6 +548,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 
 // ── State ──
 let pdfRows = [];
+let currentMode = 'daily'; // 'daily' | 'final'
 
 // ── DOM refs ──
 const dropzone      = document.getElementById('dropzone');
@@ -469,6 +566,96 @@ const dlOneBtn      = document.getElementById('dl-one-btn');
 const dlZipBtn      = document.getElementById('dl-zip-btn');
 const backBtn       = document.getElementById('back-btn');
 const statusLbl     = document.getElementById('status-lbl');
+const btnDaily      = document.getElementById('btn-daily');
+const btnFinal      = document.getElementById('btn-final');
+const headerTitle   = document.getElementById('header-title');
+const colHeaderDaily = document.getElementById('col-header-daily');
+const colHeaderFinal = document.getElementById('col-header-final');
+const bulkMonthWrap  = document.getElementById('bulk-month-wrap');
+const bulkMonthInput = document.getElementById('bulk-month-input');
+const bulkMonthBtn   = document.getElementById('bulk-month-btn');
+const bulkDateInput  = document.getElementById('bulk-date-input');
+const bulkDateCalBtn = document.getElementById('bulk-date-cal-btn');
+const bulkDateBtn    = document.getElementById('bulk-date-btn');
+
+// ── モード切替 ──
+function switchMode(mode) {
+  currentMode = mode;
+  pdfRows = [];
+  bulkIssueDate = null;
+  rowsContainer.innerHTML = '';
+  execBtn.disabled = true;
+  countLbl.textContent = '';
+  dupLbl.textContent = '';
+  statusLbl.textContent = '';
+  footerDl.style.display = 'none';
+  footerRename.style.display = 'flex';
+
+  if (mode === 'daily') {
+    btnDaily.classList.add('active');
+    btnFinal.classList.remove('active');
+    headerTitle.textContent = '日払い請求書リネームツール';
+    colHeaderDaily.style.display = '';
+    colHeaderFinal.style.display = 'none';
+    bulkMonthWrap.style.display = 'none';
+  } else {
+    btnFinal.classList.add('active');
+    btnDaily.classList.remove('active');
+    headerTitle.textContent = '最終請求リネームツール';
+    colHeaderDaily.style.display = 'none';
+    colHeaderFinal.style.display = '';
+    bulkMonthWrap.style.display = 'flex';
+  }
+}
+btnDaily.addEventListener('click', () => switchMode('daily'));
+btnFinal.addEventListener('click', () => switchMode('final'));
+
+// ── 対象月 一括適用 ──
+bulkMonthBtn.addEventListener('click', () => {
+  const m = parseInt(bulkMonthInput.value, 10);
+  if (!m || m < 1 || m > 12) return;
+  pdfRows.forEach(r => { r.month = m; });
+  rowsContainer.querySelectorAll('.month-input').forEach(input => { input.value = m; });
+  rowsContainer.querySelectorAll('.pdf-row-final').forEach((row, idx) => {
+    const preview = row.querySelector('.cell-preview');
+    if (preview) {
+      const fn = buildFilenameFinal(pdfRows[idx].name, m);
+      preview.textContent = fn;
+      preview.title = fn;
+    }
+  });
+});
+
+// ── 一括日付カレンダー ──
+bulkDateCalBtn.addEventListener('click', () => {
+  // StringVar風のラッパーオブジェクトをカレンダーに渡す
+  const fakeVar = {
+    _val: bulkDateInput.value,
+    get() { return this._val; },
+    set(v) { this._val = v; bulkDateInput.value = v; }
+  };
+  openCalendar(document.body, fakeVar);
+});
+
+// ── 発行日 一括適用 ──
+bulkDateBtn.addEventListener('click', () => {
+  const d = bulkDateInput.value.trim();
+  if (!/^\d{8}$/.test(d)) {
+    bulkDateInput.style.borderColor = 'var(--danger)';
+    return;
+  }
+  bulkDateInput.style.borderColor = '';
+  bulkIssueDate = d;
+  // 全行のプレビューを更新
+  rowsContainer.querySelectorAll('.pdf-row-final').forEach((row, idx) => {
+    const preview = row.querySelector('.cell-preview');
+    if (preview) {
+      const fn = buildFilenameFinal(pdfRows[idx].name, pdfRows[idx].month);
+      preview.textContent = fn;
+      preview.title = fn;
+    }
+  });
+});
 
 // ── Drag & Drop ──
 dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
@@ -538,7 +725,7 @@ async function extractText(file) {
   }
 }
 
-// ── ファイル名生成 ──
+// ── ファイル名生成（日払い） ──
 function buildFilename(name, amount, date, isX, isCorrection, dupPrefix) {
   const prefix = isX ? '×' : '';
   const dateStr = date || '????????';
@@ -546,6 +733,24 @@ function buildFilename(name, amount, date, isX, isCorrection, dupPrefix) {
   if (isCorrection) base += ' 訂正分';
   if (dupPrefix) base = dupPrefix + ' ' + base;
   return base + '.pdf';
+}
+
+// ── ファイル名生成（最終請求） ──
+let bulkIssueDate = null; // null = 実行当日、'yyyymmdd' = 一括指定日
+
+function buildFilenameFinal(name, month) {
+  let dateStr;
+  if (bulkIssueDate && bulkIssueDate.length === 8) {
+    dateStr = bulkIssueDate;
+  } else {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm   = String(today.getMonth() + 1).padStart(2, '0');
+    const dd   = String(today.getDate()).padStart(2, '0');
+    dateStr = `${yyyy}${mm}${dd}`;
+  }
+  const m = month ? parseInt(month, 10) : '?';
+  return `${name}様 請求書 ${m}月最終請求 ${dateStr}.pdf`;
 }
 
 // ── 重複検出 ──
@@ -575,7 +780,6 @@ async function processFiles(files) {
   pdfRows = [];
   rowsContainer.innerHTML = '';
   execBtn.disabled = true;
-  
   statusLbl.textContent = '';
   countLbl.textContent = '解析中…';
   dupLbl.textContent = '';
@@ -589,12 +793,17 @@ async function processFiles(files) {
 
     const text = await extractText(f);
     const p = parseTag(text);
+
+    // タグ日付から月を抽出（例: 20260331 → '03' → 3）
+    const month = (p.date && p.date.length >= 6) ? parseInt(p.date.slice(4, 6), 10) : null;
+
     pdfRows.push({
       file: f,
       orig: f.name,
       name: p.name,
       amount: p.amount,
       date: p.date,
+      month: month,         // 最終請求モード用
       isX: p.amount === 0,
       isCorrection: false,
       found: p.found,
@@ -614,25 +823,28 @@ async function processFiles(files) {
 function renderRows() {
   rowsContainer.innerHTML = '';
   if (pdfRows.length === 0) {
-    rowsContainer.innerHTML = '';
     countLbl.textContent = '';
     dupLbl.textContent = '';
     execBtn.disabled = true;
-    
     return;
   }
 
-  const dupTotal = detectDuplicates(pdfRows);
   const found = pdfRows.filter(r => r.found).length;
   const notFound = pdfRows.length - found;
-
   countLbl.textContent = `  ${found}件 タグ自動検出` + (notFound ? `  ／  ${notFound}件 タグなし` : '');
-  dupLbl.textContent = dupTotal > 0 ? `  ⚠ 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
 
-  pdfRows.forEach((r, idx) => addRow(idx));
-
-  const ready = pdfRows.some(r => r.name && r.date);
-  execBtn.disabled = !ready;
+  if (currentMode === 'final') {
+    // 最終請求モード：全件nameがあればOK
+    pdfRows.forEach((r, idx) => addRowFinal(idx));
+    execBtn.disabled = !pdfRows.some(r => r.name);
+    dupLbl.textContent = '';
+  } else {
+    // 日払いモード
+    const dupTotal = detectDuplicates(pdfRows);
+    dupLbl.textContent = dupTotal > 0 ? `  ⚠ 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
+    pdfRows.forEach((r, idx) => addRow(idx));
+    execBtn.disabled = !pdfRows.some(r => r.name && r.date);
+  }
 }
 
 function addRow(idx) {
@@ -729,9 +941,60 @@ function addRow(idx) {
   rowsContainer.appendChild(row);
 }
 
+// ── 行追加（最終請求モード） ──
+function addRowFinal(idx) {
+  const r = pdfRows[idx];
+  const fname = buildFilenameFinal(r.name || '', r.month);
+
+  const row = document.createElement('div');
+  row.className = 'pdf-row-final';
+  row.dataset.idx = idx;
+
+  let tagClass, tagText;
+  if (r.found && r.month) { tagClass = 'tag-ok'; tagText = `✓ タグ検出  📅 ${r.month}月`; }
+  else if (r.found)        { tagClass = 'tag-warn'; tagText = '✓ タグ検出  ⚠ 月不明'; }
+  else                      { tagClass = 'tag-ng'; tagText = '✗ タグなし'; }
+
+  row.innerHTML = `
+    <div class="cell-orig">
+      <div class="fname" title="${r.orig}">${r.orig.length > 26 ? r.orig.slice(0,26)+'…' : r.orig}</div>
+      <div class="tag-status ${tagClass}">${tagText}</div>
+    </div>
+    <div><input type="text" class="name-input" value="${escHtml(r.name)}" placeholder="担当者名"></div>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <input type="number" class="month-input" value="${r.month || ''}" placeholder="月" min="1" max="12" style="width:60px;text-align:center;">
+      <span style="font-size:12px;color:var(--muted2);">月</span>
+    </div>
+    <div class="cell-preview" title="${fname}">${fname}</div>
+    <div><button class="del-btn" title="削除">✕</button></div>
+  `;
+
+  const nameInput  = row.querySelector('.name-input');
+  const monthInput = row.querySelector('.month-input');
+  const preview    = row.querySelector('.cell-preview');
+  const delBtn     = row.querySelector('.del-btn');
+
+  const refresh = () => {
+    pdfRows[idx].name  = nameInput.value.trim();
+    pdfRows[idx].month = monthInput.value ? parseInt(monthInput.value, 10) : null;
+    const fn = buildFilenameFinal(pdfRows[idx].name, pdfRows[idx].month);
+    preview.textContent = fn;
+    preview.title = fn;
+    execBtn.disabled = !pdfRows.some(r => r.name);
+  };
+
+  nameInput.addEventListener('input', refresh);
+  monthInput.addEventListener('input', refresh);
+  delBtn.addEventListener('click', () => { pdfRows.splice(idx, 1); renderRows(); });
+
+  rowsContainer.appendChild(row);
+}
+
 // ── ダウンロード（個別） ──
 function downloadFile(r) {
-  const fn = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
+  const fn = currentMode === 'final'
+    ? buildFilenameFinal(r.name, r.month)
+    : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
   const url = URL.createObjectURL(r.file);
   const a = document.createElement('a');
   a.href = url;
@@ -744,7 +1007,9 @@ function downloadFile(r) {
 
 // ── リネーム実行 → DLフェーズへ切り替え ──
 execBtn.addEventListener('click', () => {
-  const items = pdfRows.filter(r => r.name && r.date);
+  const items = currentMode === 'final'
+    ? pdfRows.filter(r => r.name)
+    : pdfRows.filter(r => r.name && r.date);
   if (!items.length) return;
   footerRename.style.display = 'none';
   footerDl.style.display = 'flex';
@@ -761,7 +1026,9 @@ backBtn.addEventListener('click', () => {
 
 // ── 1件ずつダウンロード ──
 dlOneBtn.addEventListener('click', async () => {
-  const items = pdfRows.filter(r => r.name && r.date);
+  const items = currentMode === 'final'
+    ? pdfRows.filter(r => r.name)
+    : pdfRows.filter(r => r.name && r.date);
   if (!items.length) return;
   dlOneBtn.disabled = true;
   dlZipBtn.disabled = true;
@@ -779,7 +1046,9 @@ dlOneBtn.addEventListener('click', async () => {
 
 // ── ZIPにまとめてDL ──
 dlZipBtn.addEventListener('click', async () => {
-  const items = pdfRows.filter(r => r.name && r.date);
+  const items = currentMode === 'final'
+    ? pdfRows.filter(r => r.name)
+    : pdfRows.filter(r => r.name && r.date);
   if (!items.length) return;
   if (!window.JSZip) {
     statusLbl.textContent = 'ZIPライブラリを読み込み中…';
@@ -791,7 +1060,9 @@ dlZipBtn.addEventListener('click', async () => {
   dlZipBtn.disabled = true;
   const zip = new JSZip();
   for (const r of items) {
-    const fn = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
+    const fn = currentMode === 'final'
+      ? buildFilenameFinal(r.name, r.month)
+      : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
     const buf = await r.file.arrayBuffer();
     zip.file(fn, buf);
   }
@@ -821,6 +1092,104 @@ function loadScript(src) {
     s.onerror = reject;
     document.head.appendChild(s);
   });
+}
+
+// ── カレンダーポップアップ ──
+function openCalendar(anchorEl, dateVarObj, callback) {
+  document.querySelectorAll('.cal-popup').forEach(e => e.remove());
+
+  const current = dateVarObj.get();
+  let selYear, selMonth, selDay;
+  if (/^\d{8}$/.test(current)) {
+    selYear  = parseInt(current.slice(0,4));
+    selMonth = parseInt(current.slice(4,6)) - 1;
+    selDay   = parseInt(current.slice(6,8));
+  } else {
+    const t = new Date();
+    selYear = t.getFullYear(); selMonth = t.getMonth(); selDay = t.getDate();
+  }
+  let viewYear = selYear, viewMonth = selMonth;
+
+  const DAYS   = ['月','火','水','木','金','土','日'];
+  const MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+  const pop = document.createElement('div');
+  pop.className = 'cal-popup';
+  pop.style.cssText = `position:fixed;z-index:9999;background:#0a0a0c;border:1px solid #1e2028;
+    border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.7);user-select:none;min-width:260px;`;
+
+  function render() {
+    const today = new Date();
+    const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+    const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+    const startCol = (firstDay + 6) % 7;
+    let cells = [];
+    for (let i = 0; i < startCol; i++) cells.push('');
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push('');
+
+    let rows = '';
+    for (let i = 0; i < cells.length; i += 7) {
+      rows += '<tr>';
+      for (let j = 0; j < 7; j++) {
+        const d = cells[i+j];
+        const isToday = d && viewYear===today.getFullYear() && viewMonth===today.getMonth() && d===today.getDate();
+        const isSel   = d && viewYear===selYear && viewMonth===selMonth && d===selDay;
+        const isSat = j===5, isSun = j===6;
+        let bg = 'transparent', fg = isSat ? '#4ab8d4' : isSun ? '#e05252' : '#eef0f4';
+        if (isSel)        { bg='#e8c547'; fg='#000'; }
+        else if (isToday) { bg='#1e2028'; fg='#e8c547'; }
+        rows += `<td data-d="${d||''}" style="width:34px;height:32px;text-align:center;border-radius:4px;cursor:${d?'pointer':'default'};background:${bg};color:${d?fg:'transparent'};font-size:13px;">${d||''}</td>`;
+      }
+      rows += '</tr>';
+    }
+
+    pop.innerHTML = `
+      <div style="background:#111318;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;border-radius:8px 8px 0 0;">
+        <span class="cal-prev" style="cursor:pointer;font-size:18px;color:#eef0f4;padding:0 8px;">‹</span>
+        <span style="font-size:13px;font-weight:700;color:#eef0f4;">${viewYear}年 ${MONTHS[viewMonth]}</span>
+        <span class="cal-next" style="cursor:pointer;font-size:18px;color:#eef0f4;padding:0 8px;">›</span>
+      </div>
+      <div style="padding:8px 12px 12px;">
+        <table style="border-collapse:collapse;width:100%;">
+          <thead><tr>${DAYS.map((d,i)=>`<th style="font-size:10px;color:${i===5?'#4ab8d4':i===6?'#e05252':'#6b7280'};padding-bottom:4px;font-weight:400;">${d}</th>`).join('')}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+          <span class="cal-cancel" style="cursor:pointer;font-size:11px;color:#6b7280;padding:4px 8px;">キャンセル</span>
+          <span class="cal-ok" style="cursor:pointer;font-size:11px;font-weight:700;background:#e8c547;color:#000;padding:4px 12px;border-radius:4px;">決　定</span>
+        </div>
+      </div>`;
+
+    pop.querySelector('.cal-prev').onclick = () => { viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} render(); };
+    pop.querySelector('.cal-next').onclick = () => { viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} render(); };
+    pop.querySelectorAll('td[data-d]').forEach(td => {
+      if (!td.dataset.d) return;
+      td.onmouseenter = () => { if(!(viewYear===selYear&&viewMonth===selMonth&&parseInt(td.dataset.d)===selDay)) td.style.background='#16181f'; };
+      td.onmouseleave = () => { if(!(viewYear===selYear&&viewMonth===selMonth&&parseInt(td.dataset.d)===selDay)) td.style.background='transparent'; };
+      td.onclick = () => { selYear=viewYear; selMonth=viewMonth; selDay=parseInt(td.dataset.d); render(); };
+    });
+    pop.querySelector('.cal-ok').onclick = () => {
+      const mm = String(selMonth+1).padStart(2,'0');
+      const dd = String(selDay).padStart(2,'0');
+      dateVarObj.set(`${selYear}${mm}${dd}`);
+      if (callback) callback();
+      pop.remove();
+    };
+    pop.querySelector('.cal-cancel').onclick = () => pop.remove();
+  }
+
+  render();
+  document.body.appendChild(pop);
+  pop.addEventListener('click', e => e.stopPropagation());
+  pop.style.left = `${(window.innerWidth  - pop.offsetWidth)  / 2}px`;
+  pop.style.top  = `${(window.innerHeight - pop.offsetHeight) / 2}px`;
+
+  setTimeout(() => {
+    document.addEventListener('click', function handler(e) {
+      if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('click', handler); }
+    });
+  }, 0);
 }
 
 // ── エスケープ ──
