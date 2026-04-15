@@ -1070,9 +1070,14 @@ dlZipBtn.addEventListener('click', async () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  const firstDate = items[0].date || '';
-  const day = firstDate.length >= 8 ? parseInt(firstDate.slice(6, 8)) : '';
-  a.download = day ? `${day}日稼働分.zip` : '日払い請求書.zip';
+  if (currentMode === 'final') {
+    const month = items[0].month || '?';
+    a.download = `${month}月最終請求.zip`;
+  } else {
+    const firstDate = items[0].date || '';
+    const day = firstDate.length >= 8 ? parseInt(firstDate.slice(6, 8)) : '';
+    a.download = day ? `${day}日稼働分.zip` : '日払い請求書.zip';
+  }
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
