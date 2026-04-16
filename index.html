@@ -900,15 +900,36 @@ function renderRows() {
     const dupTotal = detectDuplicates(pdfRows);
     dupLbl.textContent = dupTotal > 0 ? `  ⚠ 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
     pdfRows.forEach((r, idx) => addRow(idx));
-    execBtn.disabled = !pdfRows.some(r => r.name && r.date);
+    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && r.name && r.date);
   }
 }
 
 function addRow(idx) {
   const r = pdfRows[idx];
-  const fname = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
 
   const row = document.createElement('div');
+  row.className = 'pdf-row';
+  row.dataset.idx = idx;
+
+  // 保留確定タグが含まれている場合はエラー表示
+  if (r.isHoryuu) {
+    row.innerHTML = `
+      <div class="cell-orig">
+        <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
+        <div class="tag-status tag-ng">✗ 保留確定タグ検出</div>
+      </div>
+      <div style="grid-column:2/8; display:flex; align-items:center;">
+        <span style="color:var(--danger); font-size:13px; font-weight:700;">こちらは保留確定請求書です。日払い請求書ではありません。</span>
+      </div>
+      <div><button class="del-btn" title="削除">✕</button></div>
+    `;
+    row.querySelector('.del-btn').addEventListener('click', () => { pdfRows.splice(idx, 1); renderRows(); });
+    rowsContainer.appendChild(row);
+    return;
+  }
+
+  const fname = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
+
   row.className = 'pdf-row';
   row.dataset.idx = idx;
 
@@ -1134,7 +1155,7 @@ execBtn.addEventListener('click', () => {
     ? pdfRows.filter(r => r.name)
     : currentMode === 'horyuu'
     ? pdfRows.filter(r => r.isHoryuu && r.name && r.date)
-    : pdfRows.filter(r => r.name && r.date);
+    : pdfRows.filter(r => !r.isHoryuu && r.name && r.date);
   if (!items.length) return;
   footerRename.style.display = 'none';
   footerDl.style.display = 'flex';
@@ -1155,7 +1176,7 @@ dlOneBtn.addEventListener('click', async () => {
     ? pdfRows.filter(r => r.name)
     : currentMode === 'horyuu'
     ? pdfRows.filter(r => r.isHoryuu && r.name && r.date)
-    : pdfRows.filter(r => r.name && r.date);
+    : pdfRows.filter(r => !r.isHoryuu && r.name && r.date);
   if (!items.length) return;
   dlOneBtn.disabled = true;
   dlZipBtn.disabled = true;
@@ -1177,7 +1198,7 @@ dlZipBtn.addEventListener('click', async () => {
     ? pdfRows.filter(r => r.name)
     : currentMode === 'horyuu'
     ? pdfRows.filter(r => r.isHoryuu && r.name && r.date)
-    : pdfRows.filter(r => r.name && r.date);
+    : pdfRows.filter(r => !r.isHoryuu && r.name && r.date);
   if (!items.length) return;
   if (!window.JSZip) {
     statusLbl.textContent = 'ZIPライブラリを読み込み中…';
