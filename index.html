@@ -1226,7 +1226,9 @@ dlZipBtn.addEventListener('click', async () => {
     const month = items[0].month || '?';
     a.download = `${month}月最終請求.zip`;
   } else if (currentMode === 'horyuu') {
-    a.download = '保留確定請求書.zip';
+    const firstDate = items[0].date || '';
+    const day = firstDate.length >= 8 ? parseInt(firstDate.slice(6, 8)) : '';
+    a.download = day ? `${day}日発行分.zip` : '保留確定請求書.zip';
   } else {
     const firstDate = items[0].date || '';
     const day = firstDate.length >= 8 ? parseInt(firstDate.slice(6, 8)) : '';
