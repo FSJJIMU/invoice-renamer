@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>日払い請求書リネームツール｜FIVE-STAR JAPAN</title>
+<title>リネームツール｜FIVE-STAR JAPAN</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root {
@@ -539,7 +539,7 @@
     <span>元ファイル名</span>
     <span>請求書名義</span>
     <span>請求金額</span>
-    <span>請求の有無</span>
+    <span></span>
     <span>日付</span>
     <span>訂正分</span>
     <span>新ファイル名プレビュー</span>
@@ -800,9 +800,11 @@ function buildFilenameFinal(name, month) {
 }
 
 // ── ファイル名生成（保留確定） ──
-function buildFilenameHoryuu(name, date) {
+function buildFilenameHoryuu(name, date, isCorrection) {
   const dateStr = date || '????????';
-  return `保留確定請求書${dateStr}${name}様.pdf`;
+  let base = `保留確定請求書${dateStr}${name}様`;
+  if (isCorrection) base += ' 訂正分';
+  return base + '.pdf';
 }
 
 // ── 重複検出 ──
@@ -1093,7 +1095,7 @@ function addRowHoryuu(idx) {
     return;
   }
 
-  const fname = buildFilenameHoryuu(r.name, r.date);
+  const fname = buildFilenameHoryuu(r.name, r.date, r.isCorrection);
   let tagClass = 'tag-ok', tagText = `✓ 保留確定タグ検出  📅 ${r.date}`;
   if (!r.date) { tagClass = 'tag-warn'; tagText = '✓ 保留確定タグ検出  ⚠ 日付なし'; }
 
@@ -1106,20 +1108,27 @@ function addRowHoryuu(idx) {
     <div><input type="number" class="amt-input" value="${r.amount !== -1 ? r.amount : ''}" placeholder="0"></div>
     <div></div>
     <div><input type="text" class="date-input" value="${r.date || ''}" placeholder="yyyymmdd" maxlength="8"></div>
-    <div></div>
+    <div>
+      <label class="corr-wrap">
+        <input type="checkbox" class="corr-check" ${r.isCorrection ? 'checked' : ''}>
+        <span>訂正分</span>
+      </label>
+    </div>
     <div class="cell-preview" title="${fname}">${fname}</div>
     <div><button class="del-btn" title="削除">✕</button></div>
   `;
 
-  const nameInput = row.querySelector('.name-input');
-  const dateInput = row.querySelector('.date-input');
-  const preview   = row.querySelector('.cell-preview');
-  const delBtn    = row.querySelector('.del-btn');
+  const nameInput  = row.querySelector('.name-input');
+  const dateInput  = row.querySelector('.date-input');
+  const corrCheck  = row.querySelector('.corr-check');
+  const preview    = row.querySelector('.cell-preview');
+  const delBtn     = row.querySelector('.del-btn');
 
   const refresh = () => {
-    pdfRows[idx].name = nameInput.value.trim();
-    pdfRows[idx].date = dateInput.value.trim() || null;
-    const fn = buildFilenameHoryuu(pdfRows[idx].name, pdfRows[idx].date);
+    pdfRows[idx].name        = nameInput.value.trim();
+    pdfRows[idx].date        = dateInput.value.trim() || null;
+    pdfRows[idx].isCorrection = corrCheck.checked;
+    const fn = buildFilenameHoryuu(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].isCorrection);
     preview.textContent = fn;
     preview.title = fn;
     execBtn.disabled = !pdfRows.some(r => r.isHoryuu && r.name && r.date);
@@ -1127,6 +1136,7 @@ function addRowHoryuu(idx) {
 
   nameInput.addEventListener('input', refresh);
   dateInput.addEventListener('input', refresh);
+  corrCheck.addEventListener('change', refresh);
   delBtn.addEventListener('click', () => { pdfRows.splice(idx, 1); renderRows(); });
 
   rowsContainer.appendChild(row);
@@ -1137,7 +1147,7 @@ function downloadFile(r) {
   const fn = currentMode === 'final'
     ? buildFilenameFinal(r.name, r.month)
     : currentMode === 'horyuu'
-    ? buildFilenameHoryuu(r.name, r.date)
+    ? buildFilenameHoryuu(r.name, r.date, r.isCorrection)
     : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
   const url = URL.createObjectURL(r.file);
   const a = document.createElement('a');
@@ -1213,7 +1223,7 @@ dlZipBtn.addEventListener('click', async () => {
     const fn = currentMode === 'final'
       ? buildFilenameFinal(r.name, r.month)
       : currentMode === 'horyuu'
-      ? buildFilenameHoryuu(r.name, r.date)
+      ? buildFilenameHoryuu(r.name, r.date, r.isCorrection)
       : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
     const buf = await r.file.arrayBuffer();
     zip.file(fn, buf);
