@@ -3,569 +3,716 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>リネームツール｜FIVE-STAR JAPAN</title>
+<title>リネーム｜FIVE-STAR JAPAN</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
   :root {
-    --bg:      #0a0a0a;
-    --panel:   #111111;
-    --card:    #161616;
-    --border:  #242424;
-    --accent:  #E8C547;
-    --accent2: #c9a82e;
-    --blue:    #3eb8c8;
-    --danger:  #e05252;
-    --success: #3dba5f;
-    --text:    #f0f0f0;
-    --muted:   #555555;
-    --muted2:  #888888;
+    --bg:        #090909;
+    --s1:        #0f0f0f;
+    --s2:        #141414;
+    --s3:        #1a1a1a;
+    --s4:        #202020;
+    --line:      #1c1c1c;
+    --line2:     #242424;
+    --line3:     #2e2e2e;
+    --gold:      #e8c547;
+    --gold2:     #c9a82e;
+    --gold3:     #6b5010;
+    --golddim:   rgba(232,197,71,0.07);
+    --goldglow:  rgba(232,197,71,0.18);
+    --teal:      #3eb8c8;
+    --tealdim:   rgba(62,184,200,0.08);
+    --red:       #e05252;
+    --reddim:    rgba(224,82,82,0.08);
+    --green:     #3dba5f;
+    --orange:    #f0a020;
+    --white:     #f0f0f0;
+    --g1:        #909090;
+    --g2:        #555555;
+    --g3:        #2a2a2a;
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
 
   body {
     background: var(--bg);
-    color: var(--text);
-    font-family: 'Yu Gothic UI', 'Meiryo', sans-serif;
-    min-height: 100vh;
+    color: var(--white);
+    font-family: 'DM Sans', 'Noto Sans JP', 'Yu Gothic UI', sans-serif;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* ── HEADER ── */
-  header {
-    background: var(--panel);
-    padding: 0 28px;
-    height: 64px;
+  /* ═══════════════════ TOPBAR ═══════════════════ */
+  /* ═══════════════════ APP SHELL ═══════════════════ */
+  #app { flex: 1; display: flex; overflow: hidden; }
+
+  /* ═══════════════════ SIDEBAR ═══════════════════ */
+  #sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--s1);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sb-logo {
+    padding: 28px 24px 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .sb-logo-main {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--white);
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+  }
+  .sb-logo-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--g2);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .sb-section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--g2);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 20px 24px 8px;
+  }
+
+  .sb-nav { flex: 1; display: flex; flex-direction: column; padding: 4px 12px; gap: 2px; }
+
+  .mode-btn {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
     display: flex;
     align-items: center;
-    border-bottom: 2px solid var(--accent);
+    gap: 12px;
+    position: relative;
+  }
+  .mode-btn:hover:not(.active) { background: var(--s2); }
+  .mode-btn.active { background: var(--golddim); }
+
+  .mode-btn-icon {
+    width: 40px; height: 26px;
+    border-radius: 4px;
+    background: var(--s3);
+    border: 1px solid var(--line2);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--g2);
+  }
+  .mode-btn.active .mode-btn-icon {
+    background: var(--golddim);
+    border-color: var(--gold2);
+    color: var(--gold);
+  }
+
+  .mode-btn-text { display: flex; flex-direction: column; gap: 1px; }
+  .mode-btn-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--g1);
+    transition: color 0.15s;
+  }
+  .mode-btn.active .mode-btn-name { color: var(--white); }
+
+  /* ═══════════════════ WORKSPACE ═══════════════════ */
+  #workspace {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+    position: relative;
+  }
+
+  /* ワークスペース ヘッダー */
+  #ws-header {
+    height: 60px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    gap: 16px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  #ws-mode-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    color: var(--gold);
+    background: var(--golddim);
+    border: 1px solid var(--gold2);
+    padding: 4px 10px;
+    border-radius: 4px;
+    text-transform: uppercase;
     flex-shrink: 0;
   }
-  .header-label {
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
-    color: var(--accent);
-    letter-spacing: 0.08em;
-    margin-bottom: 2px;
+  #header-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--white);
   }
-  .header-title {
-    font-size: 19px;
-    font-weight: 700;
-    color: var(--text);
+  #ws-count { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  #count-lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--gold);
+    letter-spacing: 0.06em;
   }
-
-  /* ── MODE SWITCH ── */
-  .mode-switch {
-    display: flex;
-    align-items: center;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 3px;
-    gap: 3px;
-    margin-left: 24px;
-  }
-  .mode-btn {
-    font-family: 'Yu Gothic UI', sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 5px 14px;
-    border-radius: 4px;
-    border: none;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-    white-space: nowrap;
-    background: transparent;
-    color: var(--muted2);
-  }
-  .mode-btn.active { background: var(--accent); color: #000; }
-
-  /* ── MAIN ── */
-  main {
-    flex: 1;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    max-width: 1300px;
-    width: 100%;
-    margin: 0 auto;
+  #dup-lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--red);
+    letter-spacing: 0.06em;
   }
 
-  /* ── DROPZONE ── */
+  /* ドロップゾーン */
   #dropzone {
-    background: var(--card);
-    border: 1.5px dashed var(--border);
+    margin: 20px 28px 0;
+    background: var(--s1);
+    border: 1px dashed var(--line3);
     border-radius: 10px;
-    height: 110px;
+    height: 84px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
+    transition: all 0.2s;
+    flex-shrink: 0;
     position: relative;
     overflow: hidden;
-    flex-shrink: 0;
   }
+  #dropzone::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 120%, var(--golddim), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  #dropzone:hover::after, #dropzone.drag-over::after { opacity: 1; }
   #dropzone:hover, #dropzone.drag-over {
-    border-color: var(--accent);
-    background: #1a1800;
+    border-color: var(--gold2);
+    border-style: solid;
   }
   #dropzone-label {
-    font-size: 15px;
-    color: var(--muted2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--g2);
     pointer-events: none;
     user-select: none;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
   }
   #file-input { display: none; }
 
-  /* ── PROGRESS ── */
-  #prog-wrap { display: none; flex-direction: column; gap: 4px; }
-  #prog-bar-bg {
-    height: 3px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
+  /* プログレス */
+  #prog-wrap {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    margin: 10px 28px 0;
   }
+  #prog-bar-bg { height: 1px; background: var(--line2); border-radius: 1px; overflow: hidden; }
   #prog-bar {
     height: 100%;
-    background: var(--accent);
+    background: linear-gradient(90deg, var(--gold), var(--teal));
     width: 0%;
     transition: width 0.2s;
+    box-shadow: 0 0 6px var(--gold);
   }
   #prog-label {
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    color: var(--muted2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--g2);
+    letter-spacing: 0.06em;
     text-align: center;
   }
 
-  /* ── TABLE HEADER ── */
+  /* テーブルメタ / 一括変更 */
   #table-meta {
     display: flex;
     align-items: center;
-    gap: 12px;
-    height: 36px;
-  }
-  #count-lbl {
-    font-family: 'Courier New', monospace;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--accent);
-  }
-  #dup-lbl {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--danger);
-  }
-
-  .col-header {
-    background: var(--panel);
-    border-radius: 4px;
-    display: grid;
-    grid-template-columns: 180px 130px 85px 90px 150px 80px 1fr 36px;
-    align-items: center;
-    padding: 0 10px;
-    height: 30px;
     gap: 8px;
+    height: 44px;
+    padding: 0 28px;
+    border-bottom: 1px solid var(--line);
+    margin-top: 12px;
     flex-shrink: 0;
   }
-  .col-header span {
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
-    color: var(--muted2);
+  #bulk-month-wrap {
+    margin-left: auto;
+  }
+  #bulk-month-wrap span {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 10px !important;
+    letter-spacing: 0.06em !important;
+    color: var(--g2) !important;
+  }
+  #bulk-month-wrap button {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 10px !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    border-radius: 6px !important;
+    height: 28px !important;
+    padding: 0 12px !important;
+    cursor: pointer !important;
+    transition: all 0.15s !important;
+    border: 1px solid var(--gold2) !important;
+    background: var(--golddim) !important;
+    color: var(--gold) !important;
+  }
+  #bulk-month-wrap button:hover {
+    background: var(--gold) !important;
+    color: var(--white) !important;
+  }
+  #bulk-date-cal-btn {
+    border: 1px solid var(--line2) !important;
+    background: var(--s2) !important;
+    color: var(--g1) !important;
+    padding: 0 !important;
+    width: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: visible !important;
+  }
+  #bulk-date-cal-btn:hover {
+    background: var(--s3) !important;
+    border-color: var(--line3) !important;
+  }
+  #bulk-date-cal-btn svg {
+    width: 14px !important;
+    height: 14px !important;
+    display: block !important;
+    flex-shrink: 0 !important;
   }
 
-  /* ── ROWS ── */
+  /* テーブルラッパー */
+  #table-wrap {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* 列ヘッダー */
+  .col-header, .col-header-final {
+    display: grid;
+    align-items: center;
+    padding: 0 28px;
+    height: 32px;
+    gap: 8px;
+    flex-shrink: 0;
+    background: var(--s1);
+    border-bottom: 1px solid var(--line);
+    min-width: max-content;
+  }
+  .col-header { grid-template-columns: 180px 130px 85px 90px 150px 80px 280px 36px; }
+  .col-header-final { grid-template-columns: 200px 200px 120px 280px 36px; }
+  .col-header span, .col-header-final span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--g3);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  /* 行コンテナ */
   #rows-container {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    min-height: 0;
   }
 
-  .pdf-row {
-    background: var(--card);
-    border-radius: 6px;
+  /* 行 */
+  .pdf-row, .pdf-row-final {
     display: grid;
-    grid-template-columns: 180px 130px 85px 90px 150px 80px 1fr 36px;
     align-items: center;
-    padding: 0 10px;
+    padding: 0 28px;
     height: 52px;
     gap: 8px;
     flex-shrink: 0;
+    border-bottom: 1px solid var(--line);
+    transition: background 0.1s;
+    position: relative;
+    min-width: max-content;
+    width: 100%;
   }
-  .pdf-row:nth-child(even) { background: var(--panel); }
+  .pdf-row { grid-template-columns: 180px 130px 85px 90px 150px 80px 280px 36px; }
+  .pdf-row-final { grid-template-columns: 200px 200px 120px 280px 36px; }
+  .pdf-row:nth-child(even), .pdf-row-final:nth-child(even) { background: var(--s1); }
+  .pdf-row:hover, .pdf-row-final:hover { background: var(--s2); }
 
   /* 元ファイル名セル */
   .cell-orig {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    overflow: hidden;
+    display: flex; flex-direction: column;
+    justify-content: center; overflow: hidden; gap: 3px;
   }
   .cell-orig .fname {
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
-    color: var(--muted2);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--g2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .cell-orig .tag-status {
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
-    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; white-space: nowrap;
+    display: flex; align-items: center;
   }
-  .tag-ok  { color: var(--success); }
-  .tag-ng  { color: var(--danger); }
-  .tag-warn{ color: #f0a020; }
+  .tag-ok   { color: var(--green); }
+  .tag-ng   { color: var(--red); }
+  .tag-warn { color: var(--gold); }
 
   /* Inputs */
   input[type="text"], input[type="number"] {
     background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--text);
-    font-family: 'Yu Gothic UI', sans-serif;
-    font-size: 13px;
-    padding: 0 8px;
+    border: 1px solid var(--line2);
+    border-radius: 6px;
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    padding: 0 10px;
     height: 30px;
     width: 100%;
     outline: none;
-    transition: border-color 0.15s;
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
   input[type="number"] {
-    font-family: 'Courier New', monospace;
-    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right; font-size: 11px;
   }
-  input:focus { border-color: var(--accent); }
+  input:focus {
+    border-color: var(--gold2);
+    box-shadow: 0 0 0 2px var(--golddim);
+  }
+  input[type="text"].date-input {
+    color: var(--teal);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.04em;
+  }
+  input::placeholder { color: var(--g3); font-size: 10px; }
 
-  /* 請求の有無ボタン */
+  /* 請求の有無 */
   .x-btn {
     height: 28px;
-    border-radius: 5px;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--muted2);
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.15s;
-    width: 100%;
-    white-space: nowrap;
+    border-radius: 6px;
+    border: 1px solid var(--line2);
+    background: transparent;
+    color: var(--g2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; cursor: pointer; width: 100%;
+    letter-spacing: 0.06em; transition: all 0.15s;
   }
-  .x-btn.is-x {
-    background: #2d1a1a;
-    border-color: var(--danger);
-    color: var(--danger);
-  }
+  .x-btn:hover { border-color: var(--line3); color: var(--g1); }
+  .x-btn.is-x { background: var(--reddim); border-color: var(--red); color: var(--red); }
 
-  /* 訂正分チェック */
-  .corr-wrap {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-  }
-  .corr-wrap input[type="checkbox"] {
-    accent-color: var(--accent);
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-  }
+  /* 訂正分 */
+  .corr-wrap { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .corr-wrap input[type="checkbox"] { accent-color: var(--gold); width: 13px; height: 13px; }
   .corr-wrap span {
-    font-size: 12px;
-    color: var(--muted2);
-    user-select: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--g2); user-select: none;
+    letter-spacing: 0.1em; text-transform: uppercase;
   }
 
   /* プレビュー */
   .cell-preview {
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    color: var(--blue);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--teal);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .cell-preview.is-x { color: var(--danger); }
+  .cell-preview.is-x { color: var(--red); }
 
-  /* 削除ボタン */
+  /* 削除 */
   .del-btn {
-    background: transparent;
-    border: none;
-    color: var(--muted);
-    font-size: 16px;
-    cursor: pointer;
-    border-radius: 4px;
-    width: 28px;
-    height: 28px;
+    background: transparent; border: none;
+    color: var(--g3); font-size: 12px; cursor: pointer;
+    width: 28px; height: 28px; border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
-    transition: background 0.15s, color 0.15s;
+    transition: all 0.15s;
   }
-  .del-btn:hover { background: var(--border); color: var(--danger); }
+  .del-btn:hover { background: var(--reddim); color: var(--red); }
 
-  /* ── FOOTER ── */
+  /* ═══════════════════ FOOTER ═══════════════════ */
   footer {
-    background: var(--panel);
-    border-top: 1px solid var(--border);
-    height: 70px;
+    height: 68px;
+    background: var(--s1);
+    border-top: 1px solid var(--line);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 20px;
+    padding: 0 28px;
+    gap: 14px;
+    flex-shrink: 0;
+    z-index: 10;
+    position: relative;
+  }
+
+  #exec-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #0a0600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 1px rgba(232,197,71,0.3), 0 4px 16px var(--goldglow);
     flex-shrink: 0;
   }
-  #exec-btn {
-    background: var(--accent);
-    color: #000;
-    font-family: 'Yu Gothic UI', sans-serif;
-    font-size: 16px;
-    font-weight: 700;
-    border: none;
-    border-radius: 8px;
-    padding: 0 32px;
-    height: 42px;
-    cursor: pointer;
-    transition: background 0.15s, opacity 0.15s;
+  #exec-btn:hover:not(:disabled) {
+    background: #f0d060;
+    box-shadow: 0 0 0 6px rgba(232,197,71,0.12), 0 6px 24px var(--goldglow);
+    transform: scale(1.06);
   }
-  #exec-btn:hover:not(:disabled) { background: var(--accent2); }
-  #exec-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  #exec-btn:active:not(:disabled) { transform: scale(0.97); }
+  #exec-btn:disabled { opacity: 0.2; cursor: not-allowed; box-shadow: none; transform: none; }
 
-  #dl-one-btn, #dl-zip-btn {
-    font-family: 'Yu Gothic UI', sans-serif;
-    font-size: 15px;
-    font-weight: 700;
-    border-radius: 8px;
-    padding: 0 28px;
-    height: 42px;
-    cursor: pointer;
-    transition: background 0.15s, opacity 0.15s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
   #dl-one-btn {
-    background: var(--accent);
-    color: #000;
+    background: var(--gold);
+    color: #0a0600;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
     border: none;
+    border-radius: 8px;
+    padding: 0 24px;
+    height: 38px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 1px rgba(232,197,71,0.3), 0 2px 8px var(--goldglow);
   }
-  #dl-one-btn:hover:not(:disabled) { background: var(--accent2); }
+  #dl-one-btn:hover:not(:disabled) {
+    background: #f0d060;
+    box-shadow: 0 4px 16px var(--goldglow);
+  }
   #dl-zip-btn {
-    background: var(--card);
-    color: var(--accent);
-    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--g1);
+    border: 1px solid var(--line2);
+    border-radius: 8px;
+    padding: 0 20px;
+    height: 38px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
   }
-  #dl-zip-btn:hover:not(:disabled) { background: #1a1800; }
-  #dl-one-btn:disabled, #dl-zip-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  #dl-zip-btn:hover:not(:disabled) {
+    background: var(--s2);
+    border-color: var(--line3);
+    color: var(--white);
+  }
+  #dl-one-btn:disabled, #dl-zip-btn:disabled { opacity: 0.2; cursor: not-allowed; }
 
   #back-btn {
     background: transparent;
-    color: var(--muted2);
-    border: 1px solid var(--border);
+    color: var(--g2);
+    border: 1px solid var(--line2);
     border-radius: 8px;
     padding: 0 16px;
-    height: 42px;
-    font-family: 'Yu Gothic UI', sans-serif;
+    height: 38px;
+    font-family: 'DM Sans', sans-serif;
     font-size: 13px;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
   }
-  #back-btn:hover { background: var(--border); color: var(--text); }
+  #back-btn:hover { background: var(--s2); color: var(--g1); border-color: var(--line3); }
 
   #status-lbl {
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    color: var(--muted2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--g2);
+    letter-spacing: 0.06em;
+    position: absolute;
+    right: 28px;
   }
 
-  /* ── SCROLLBAR ── */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  /* スクロールバー */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line3); border-radius: 4px; }
 
-  /* ── EMPTY STATE ── */
-  #empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    color: var(--muted);
-    font-size: 14px;
-    gap: 8px;
-    padding: 40px;
+  /* CALポップアップ */
+  .cal-popup {
+    box-shadow: 0 24px 64px rgba(0,0,0,0.8),
+                0 0 0 1px var(--line2),
+                0 0 0 4px rgba(232,197,71,0.05) !important;
+    border-radius: 10px !important;
   }
-  #empty-state .icon { font-size: 40px; opacity: 0.4; }
-
-  /* ── 最終請求モード ── */
-  .col-header-final {
-    background: var(--panel);
-    border-radius: 4px;
-    display: grid;
-    grid-template-columns: 200px 200px 120px 1fr 36px;
-    align-items: center;
-    padding: 0 10px;
-    height: 30px;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-  .col-header-final span {
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
-    color: var(--muted2);
-  }
-  .pdf-row-final {
-    background: var(--card);
-    border-radius: 6px;
-    display: grid;
-    grid-template-columns: 200px 200px 120px 1fr 36px;
-    align-items: center;
-    padding: 0 10px;
-    height: 52px;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-  .pdf-row-final:nth-child(even) { background: var(--panel); }
-
-  /* date input */
-  input[type="text"].date-input {
-    color: var(--blue);
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
-  }
-  input::placeholder { color: var(--muted); }
 </style>
 </head>
 <body>
 
-<header>
-  <div>
-    <div class="header-label">FIVE-STAR JAPAN</div>
-    <div class="header-title" id="header-title">日払い請求書リネームツール</div>
-  </div>
-  <div class="mode-switch">
-    <button class="mode-btn active" id="btn-daily">日払い請求書</button>
-    <button class="mode-btn" id="btn-horyuu">保留確定請求書</button>
-    <button class="mode-btn" id="btn-group">グループ用請求</button>
-    <button class="mode-btn" id="btn-final">最終請求</button>
-  </div>
-</header>
+<!-- APP -->
+<div id="app">
 
-<main>
-  <!-- DROPZONE -->
-  <div id="dropzone" onclick="document.getElementById('file-input').click()">
-    <span id="dropzone-label">📄 &nbsp; PDFをここにドラッグ＆ドロップ　／　クリックしてファイルを選択</span>
-    <input type="file" id="file-input" accept=".pdf" multiple>
-  </div>
-
-  <!-- PROGRESS -->
-  <div id="prog-wrap">
-    <div id="prog-bar-bg"><div id="prog-bar"></div></div>
-    <div id="prog-label"></div>
-  </div>
-
-  <!-- TABLE META -->
-  <div id="table-meta">
-    <span id="count-lbl"></span>
-    <span id="dup-lbl"></span>
-    <div id="bulk-month-wrap" style="display:none; align-items:center; gap:8px; margin-left:auto;">
-      <span style="font-size:12px; color:var(--muted2); font-family:'Courier New',monospace;">対象月を一括変更：</span>
-      <input type="number" id="bulk-month-input" min="1" max="12" placeholder="月"
-        style="width:60px; height:28px; text-align:center; font-family:'Courier New',monospace;">
-      <button id="bulk-month-btn"
-        style="height:28px; padding:0 14px; background:var(--accent); color:#000;
-               font-family:'Yu Gothic UI',sans-serif; font-size:12px; font-weight:700;
-               border:none; border-radius:4px; cursor:pointer;">
-        一括適用
-      </button>
-      <span style="font-size:12px; color:var(--border); margin:0 4px;">｜</span>
-      <span style="font-size:12px; color:var(--muted2); font-family:'Courier New',monospace;">発行日を一括変更：</span>
-      <input type="text" id="bulk-date-input" placeholder="yyyymmdd" maxlength="8"
-        style="width:100px; height:28px; text-align:center; font-family:'Courier New',monospace; color:var(--blue);">
-      <button id="bulk-date-cal-btn"
-        style="height:28px; padding:0 10px; background:var(--bg); color:var(--accent);
-               font-family:'Yu Gothic UI',sans-serif; font-size:11px; font-weight:600;
-               border:1px solid var(--border); border-radius:4px; cursor:pointer;">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="2" width="12" height="11" rx="1.5" stroke="#E8C547" stroke-width="1.2"/>
-          <line x1="1" y1="5.5" x2="13" y2="5.5" stroke="#E8C547" stroke-width="1.2"/>
-          <line x1="4" y1="1" x2="4" y2="4" stroke="#E8C547" stroke-width="1.2" stroke-linecap="round"/>
-          <line x1="10" y1="1" x2="10" y2="4" stroke="#E8C547" stroke-width="1.2" stroke-linecap="round"/>
-          <rect x="3.5" y="7.5" width="2" height="2" rx="0.3" fill="#E8C547"/>
-          <rect x="6.5" y="7.5" width="2" height="2" rx="0.3" fill="#E8C547"/>
-          <rect x="9.5" y="7.5" width="2" height="2" rx="0.3" fill="#E8C547"/>
-        </svg>
-      </button>
-      <button id="bulk-date-btn"
-        style="height:28px; padding:0 14px; background:var(--accent); color:#000;
-               font-family:'Yu Gothic UI',sans-serif; font-size:12px; font-weight:700;
-               border:none; border-radius:4px; cursor:pointer;">
-        一括適用
-      </button>
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-main">Rename<br>Tool</div>
+      <div class="sb-logo-sub">FIVE-STAR JAPAN</div>
     </div>
+    <div class="sb-section-label">MODULES</div>
+    <div class="sb-nav">
+
+      <button class="mode-btn active" id="btn-daily">
+        <div class="mode-btn-icon">DAILY</div>
+        <div class="mode-btn-text">
+          <span class="mode-btn-name">日払い請求書</span>
+        </div>
+      </button>
+
+      <button class="mode-btn" id="btn-horyuu">
+        <div class="mode-btn-icon">HOLD</div>
+        <div class="mode-btn-text">
+          <span class="mode-btn-name">保留確定請求書</span>
+        </div>
+      </button>
+
+      <button class="mode-btn" id="btn-group">
+        <div class="mode-btn-icon">GRP</div>
+        <div class="mode-btn-text">
+          <span class="mode-btn-name">グループ用請求</span>
+        </div>
+      </button>
+
+      <button class="mode-btn" id="btn-final">
+        <div class="mode-btn-icon">FINAL</div>
+        <div class="mode-btn-text">
+          <span class="mode-btn-name">最終請求</span>
+        </div>
+      </button>
+
+    </div>
+  </nav><!-- /sidebar -->
+
+  <!-- WORKSPACE -->
+  <div id="workspace">
+    <div id="ws-header">
+      <span id="ws-mode-tag">DAILY</span>
+      <span id="header-title">日払い請求書リネーム</span>
+      <div id="ws-count">
+        <span id="count-lbl"></span>
+        <span id="dup-lbl"></span>
+      </div>
+    </div>
+
+    <div id="dropzone" onclick="document.getElementById('file-input').click()">
+      <span id="dropzone-label">
+        <svg width="16" height="18" viewBox="0 0 14 16" fill="none" style="opacity:0.35">
+          <path d="M2 1.5A1.5 1.5 0 0 1 3.5 0H9l4 4v10.5A1.5 1.5 0 0 1 11.5 16h-8A1.5 1.5 0 0 1 2 14.5V1.5z" stroke="#a0a0b8" stroke-width="1.2" fill="none"/>
+          <path d="M9 0v3.5A.5.5 0 0 0 9.5 4H13" stroke="#a0a0b8" stroke-width="1.2"/>
+        </svg>
+        PDFをドラッグ＆ドロップ　または　クリックしてファイルを選択
+      </span>
+      <input type="file" id="file-input" accept=".pdf" multiple>
+    </div>
+
+    <div id="prog-wrap">
+      <div id="prog-bar-bg"><div id="prog-bar"></div></div>
+      <div id="prog-label"></div>
+    </div>
+
+    <div id="table-meta">
+      <div id="bulk-month-wrap" style="display:none; align-items:center; gap:8px; margin-left:auto;">
+        <span>対象月：</span>
+        <input type="number" id="bulk-month-input" min="1" max="12" placeholder="月" style="width:54px; height:28px; text-align:center;">
+        <button id="bulk-month-btn">一括適用</button>
+        <span style="color:var(--line3); margin:0 4px;">|</span>
+        <span>発行日：</span>
+        <input type="text" id="bulk-date-input" placeholder="yyyymmdd" maxlength="8" style="width:92px; height:28px; text-align:center; color:var(--teal);">
+        <button id="bulk-date-cal-btn" style="width:28px; display:flex; align-items:center; justify-content:center;">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+            <rect x="1" y="2" width="12" height="11" rx="1.5" stroke="#e8c547" stroke-width="1.2"/>
+            <line x1="1" y1="5.5" x2="13" y2="5.5" stroke="#e8c547" stroke-width="1.2"/>
+            <line x1="4" y1="1" x2="4" y2="4" stroke="#e8c547" stroke-width="1.2" stroke-linecap="round"/>
+            <line x1="10" y1="1" x2="10" y2="4" stroke="#e8c547" stroke-width="1.2" stroke-linecap="round"/>
+            <rect x="3.5" y="7.5" width="2" height="2" rx="0.3" fill="#e8c547"/>
+            <rect x="6.5" y="7.5" width="2" height="2" rx="0.3" fill="#e8c547"/>
+            <rect x="9.5" y="7.5" width="2" height="2" rx="0.3" fill="#e8c547"/>
+          </svg>
+        </button>
+        <button id="bulk-date-btn">一括適用</button>
+      </div>
+    </div>
+
+    <div id="table-wrap">
+    <div class="col-header" id="col-header-daily">
+      <span>元ファイル名</span><span>請求書名義</span><span>請求金額</span>
+      <span>請求の有無</span><span>日付</span><span>訂正分</span>
+      <span>新ファイル名プレビュー</span><span></span>
+    </div>
+    <div class="col-header-final" id="col-header-final" style="display:none;">
+      <span>元ファイル名</span><span>請求書名義</span><span>対象月</span>
+      <span>新ファイル名プレビュー</span><span></span>
+    </div>
+    <div class="col-header" id="col-header-horyuu" style="display:none;">
+      <span>元ファイル名</span><span>請求書名義</span><span>請求金額</span>
+      <span></span><span>日付</span><span>訂正分</span>
+      <span>新ファイル名プレビュー</span><span></span>
+    </div>
+    <div class="col-header" id="col-header-group" style="display:none;">
+      <span>元ファイル名</span><span>請求書名義</span><span>請求金額</span>
+      <span>稼働期間</span><span>発行日</span><span>訂正分</span>
+      <span>新ファイル名プレビュー</span><span></span>
+    </div>
+
+    <div id="rows-container"></div>
+    </div><!-- /table-wrap -->
   </div>
 
-  <!-- COL HEADER 日払い -->
-  <div class="col-header" id="col-header-daily">
-    <span>元ファイル名</span>
-    <span>請求書名義</span>
-    <span>請求金額</span>
-    <span>請求の有無</span>
-    <span>日付</span>
-    <span>訂正分</span>
-    <span>新ファイル名プレビュー</span>
-    <span></span>
-  </div>
-
-  <!-- COL HEADER 最終請求 -->
-  <div class="col-header-final" id="col-header-final" style="display:none;">
-    <span>元ファイル名</span>
-    <span>請求書名義</span>
-    <span>対象月</span>
-    <span>新ファイル名プレビュー</span>
-    <span></span>
-  </div>
-
-  <!-- COL HEADER 保留確定 -->
-  <div class="col-header" id="col-header-horyuu" style="display:none;">
-    <span>元ファイル名</span>
-    <span>請求書名義</span>
-    <span>請求金額</span>
-    <span></span>
-    <span>日付</span>
-    <span>訂正分</span>
-    <span>新ファイル名プレビュー</span>
-    <span></span>
-  </div>
-  <!-- COL HEADER グループ用請求 -->
-  <div class="col-header" id="col-header-group" style="display:none;">
-    <span>元ファイル名</span>
-    <span>請求書名義</span>
-    <span>請求金額</span>
-    <span>稼働期間</span>
-    <span>発行日</span>
-    <span>訂正分</span>
-    <span>新ファイル名プレビュー</span>
-    <span></span>
-  </div>
-
-  <div id="rows-container"></div>
-</main>
+</div>
 
 <footer>
   <div id="footer-rename">
-    <button id="exec-btn" disabled>▶ &nbsp; リネーム実行</button>
+    <button id="exec-btn" disabled title="リネーム実行">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M6 3.5L16.5 10L6 16.5V3.5Z" fill="currentColor"/>
+      </svg>
+    </button>
   </div>
-  <div id="footer-dl" style="display:none; align-items:center; gap:16px;">
+  <div id="footer-dl" style="display:none; align-items:center; gap:10px;">
     <button id="dl-one-btn">1件ずつダウンロード</button>
     <button id="dl-zip-btn">ZIPにまとめてダウンロード</button>
     <button id="back-btn">戻る</button>
@@ -577,6 +724,17 @@
 // PDF.js worker設定
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── SVG Icons ──
+const ICON = {
+  file:    `<svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-right:6px"><path d="M2 1.5A1.5 1.5 0 0 1 3.5 0H9l4 4v10.5A1.5 1.5 0 0 1 11.5 16h-8A1.5 1.5 0 0 1 2 14.5V1.5z" stroke="#888" stroke-width="1.2" fill="none"/><path d="M9 0v3.5A.5.5 0 0 0 9.5 4H13" stroke="#888" stroke-width="1.2"/></svg>`,
+  play:    `<svg width="11" height="13" viewBox="0 0 11 13" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-right:6px"><path d="M1 1.5L10 6.5L1 11.5V1.5Z" fill="#000" stroke="#000" stroke-width="1" stroke-linejoin="round"/></svg>`,
+  check:   `<svg width="13" height="10" viewBox="0 0 13 10" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-right:4px"><path d="M1 5L4.5 8.5L12 1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  cross:   `<svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-right:4px"><path d="M1 1L10 10M10 1L1 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+  warn:    `<svg width="14" height="13" viewBox="0 0 14 13" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-right:4px"><path d="M7 1L13 12H1L7 1Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" fill="none"/><line x1="7" y1="5" x2="7" y2="8.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7" cy="10.5" r="0.7" fill="currentColor"/></svg>`,
+  cal:     `<svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-right:4px"><rect x="1" y="2" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="5.5" x2="13" y2="5.5" stroke="currentColor" stroke-width="1.2"/><line x1="4" y1="1" x2="4" y2="4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="10" y1="1" x2="10" y2="4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><rect x="3.5" y="7.5" width="2" height="2" rx="0.3" fill="currentColor"/><rect x="6.5" y="7.5" width="2" height="2" rx="0.3" fill="currentColor"/><rect x="9.5" y="7.5" width="2" height="2" rx="0.3" fill="currentColor"/></svg>`,
+  list:    `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-right:4px"><rect x="0.6" y="0.6" width="11.8" height="11.8" rx="1.4" stroke="currentColor" stroke-width="1.2" fill="none"/><line x1="3" y1="4" x2="10" y2="4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3" y1="6.5" x2="10" y2="6.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3" y1="9" x2="7" y2="9" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>`,
+};
 
 // ── State ──
 let pdfRows = [];
@@ -615,6 +773,14 @@ const bulkDateCalBtn = document.getElementById('bulk-date-cal-btn');
 const bulkDateBtn    = document.getElementById('bulk-date-btn');
 
 // ── モード切替 ──
+const modeTags = { daily: 'DAILY', horyuu: 'HOLD', group: 'GROUP', final: 'FINAL' };
+const modeTitles = {
+  daily: '日払い請求書リネーム',
+  horyuu: '保留確定請求書リネーム',
+  group: 'グループ用請求リネーム',
+  final: '最終請求リネーム'
+};
+
 function switchMode(mode) {
   currentMode = mode;
   pdfRows = [];
@@ -626,32 +792,37 @@ function switchMode(mode) {
   statusLbl.textContent = '';
   footerDl.style.display = 'none';
   footerRename.style.display = 'flex';
+  const tag = modeTags[mode] || mode.toUpperCase();
+  const wsTag = document.getElementById('ws-mode-tag');
+  if (wsTag) wsTag.textContent = tag;
+  const titleEl = document.getElementById('header-title');
+  if (titleEl) titleEl.textContent = modeTitles[mode] || tag;
 
   if (mode === 'daily') {
     btnDaily.classList.add('active');   btnFinal.classList.remove('active');
     btnHoryuu.classList.remove('active'); btnGroup.classList.remove('active');
-    headerTitle.textContent = '日払い請求書リネームツール';
+    headerTitle.textContent = '日払い請求書リネーム';
     colHeaderDaily.style.display = ''; colHeaderFinal.style.display = 'none';
     colHeaderHoryuu.style.display = 'none'; colHeaderGroup.style.display = 'none';
     bulkMonthWrap.style.display = 'none';
   } else if (mode === 'final') {
     btnFinal.classList.add('active');   btnDaily.classList.remove('active');
     btnHoryuu.classList.remove('active'); btnGroup.classList.remove('active');
-    headerTitle.textContent = '最終請求リネームツール';
+    headerTitle.textContent = '最終請求リネーム';
     colHeaderDaily.style.display = 'none'; colHeaderFinal.style.display = '';
     colHeaderHoryuu.style.display = 'none'; colHeaderGroup.style.display = 'none';
     bulkMonthWrap.style.display = 'flex';
   } else if (mode === 'horyuu') {
     btnHoryuu.classList.add('active');  btnDaily.classList.remove('active');
     btnFinal.classList.remove('active'); btnGroup.classList.remove('active');
-    headerTitle.textContent = '保留確定請求書リネームツール';
+    headerTitle.textContent = '保留確定請求書リネーム';
     colHeaderDaily.style.display = 'none'; colHeaderFinal.style.display = 'none';
     colHeaderHoryuu.style.display = ''; colHeaderGroup.style.display = 'none';
     bulkMonthWrap.style.display = 'none';
   } else {
     btnGroup.classList.add('active');   btnDaily.classList.remove('active');
     btnFinal.classList.remove('active'); btnHoryuu.classList.remove('active');
-    headerTitle.textContent = 'グループ用請求リネームツール';
+    headerTitle.textContent = 'グループ用請求リネーム';
     colHeaderDaily.style.display = 'none'; colHeaderFinal.style.display = 'none';
     colHeaderHoryuu.style.display = 'none'; colHeaderGroup.style.display = '';
     bulkMonthWrap.style.display = 'none';
@@ -693,7 +864,7 @@ bulkDateCalBtn.addEventListener('click', () => {
 bulkDateBtn.addEventListener('click', () => {
   const d = bulkDateInput.value.trim();
   if (!/^\d{8}$/.test(d)) {
-    bulkDateInput.style.borderColor = 'var(--danger)';
+    bulkDateInput.style.borderColor = 'var(--red)';
     return;
   }
   bulkDateInput.style.borderColor = '';
@@ -839,7 +1010,7 @@ function buildFilenameHoryuu(name, date, isCorrection) {
 function buildFilenameGroup(name, date, period, isCorrection) {
   const dateStr   = date   || '????????';
   const periodStr = period || '??-??';
-  let base = `${periodStr}稼働分請求書${dateStr}${name}様`;
+  let base = `${name}様 請求書 ${periodStr}稼働分 ${dateStr}`;
   if (isCorrection) base += ' 訂正分';
   return base + '.pdf';
 }
@@ -942,7 +1113,7 @@ function renderRows() {
   } else {
     // 日払いモード
     const dupTotal = detectDuplicates(pdfRows);
-    dupLbl.textContent = dupTotal > 0 ? `  ⚠ 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
+    dupLbl.innerHTML = dupTotal > 0 ? `${ICON.warn} 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
     pdfRows.forEach((r, idx) => addRow(idx));
     execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && r.name && r.date);
   }
@@ -960,10 +1131,10 @@ function addRow(idx) {
     row.innerHTML = `
       <div class="cell-orig">
         <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
-        <div class="tag-status tag-ng">✗ 保留確定タグ検出</div>
+        <div class="tag-status tag-ng">${ICON.cross} 保留確定タグ検出</div>
       </div>
       <div style="grid-column:2/8; display:flex; align-items:center;">
-        <span style="color:var(--danger); font-size:13px; font-weight:700;">こちらは保留確定請求書です。日払い請求書ではありません。</span>
+        <span style="color:var(--red); font-size:13px; font-weight:700;">こちらは保留確定請求書です。日払い請求書ではありません。</span>
       </div>
       <div><button class="del-btn" title="削除">✕</button></div>
     `;
@@ -977,10 +1148,10 @@ function addRow(idx) {
     row.innerHTML = `
       <div class="cell-orig">
         <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
-        <div class="tag-status tag-ng">✗ グループタグ検出</div>
+        <div class="tag-status tag-ng">${ICON.cross} グループタグ検出</div>
       </div>
       <div style="grid-column:2/8; display:flex; align-items:center;">
-        <span style="color:var(--danger); font-size:13px; font-weight:700;">こちらはグループ用請求書です。日払い請求書ではありません。</span>
+        <span style="color:var(--red); font-size:13px; font-weight:700;">こちらはグループ用請求書です。日払い請求書ではありません。</span>
       </div>
       <div><button class="del-btn" title="削除">✕</button></div>
     `;
@@ -996,9 +1167,9 @@ function addRow(idx) {
 
   // タグ状態テキスト
   let tagClass, tagText;
-  if (r.found && r.date) { tagClass = 'tag-ok'; tagText = '✓ タグ検出  📅 ' + r.date; }
-  else if (r.found)       { tagClass = 'tag-warn'; tagText = '✓ タグ検出  ⚠ 日付なし'; }
-  else                     { tagClass = 'tag-ng'; tagText = '✗ タグなし'; }
+  if (r.found && r.date) { tagClass = 'tag-ok'; tagText = `${ICON.check} タグ検出 ${ICON.cal} ${r.date}`; }
+  else if (r.found)       { tagClass = 'tag-warn'; tagText = `${ICON.check} タグ検出 ${ICON.warn} 日付なし`; }
+  else                     { tagClass = 'tag-ng'; tagText = `${ICON.cross} タグなし`; }
 
   const amtDisplay = r.amount !== -1 ? r.amount : '';
   const isXClass = r.isX ? 'is-x' : '';
@@ -1057,7 +1228,7 @@ function addRow(idx) {
     execBtn.disabled = !ready;
 
     const dupTotal = pdfRows.filter(r => r.dupPrefix && r.dupPrefix !== '').length;
-    dupLbl.textContent = dupTotal > 0 ? `  ⚠ 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
+    dupLbl.innerHTML = dupTotal > 0 ? `${ICON.warn} 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
   };
 
   xBtn.addEventListener('click', () => {
@@ -1094,10 +1265,10 @@ function addRowFinal(idx) {
     row.innerHTML = `
       <div class="cell-orig">
         <div class="fname" title="${r.orig}">${r.orig.length > 26 ? r.orig.slice(0,26)+'…' : r.orig}</div>
-        <div class="tag-status tag-ng">✗ ${r.isHoryuu ? '保留確定' : 'グループ'}タグ検出</div>
+        <div class="tag-status tag-ng">${ICON.cross} ${r.isHoryuu ? '保留確定' : 'グループ'}タグ検出</div>
       </div>
       <div style="grid-column:2/5; display:flex; align-items:center;">
-        <span style="color:var(--danger); font-size:13px; font-weight:700;">こちらは${label}です。最終請求ではありません。</span>
+        <span style="color:var(--red); font-size:13px; font-weight:700;">こちらは${label}です。最終請求ではありません。</span>
       </div>
       <div><button class="del-btn" title="削除">✕</button></div>
     `;
@@ -1109,9 +1280,9 @@ function addRowFinal(idx) {
   const fname = buildFilenameFinal(r.name || '', r.month);
 
   let tagClass, tagText;
-  if (r.found && r.month) { tagClass = 'tag-ok'; tagText = `✓ タグ検出  📅 ${r.month}月`; }
-  else if (r.found)        { tagClass = 'tag-warn'; tagText = '✓ タグ検出  ⚠ 月不明'; }
-  else                      { tagClass = 'tag-ng'; tagText = '✗ タグなし'; }
+  if (r.found && r.month) { tagClass = 'tag-ok'; tagText = `${ICON.check} タグ検出 ${ICON.cal} ${r.month}月`; }
+  else if (r.found)        { tagClass = 'tag-warn'; tagText = `${ICON.check} タグ検出 ${ICON.warn} 月不明`; }
+  else                      { tagClass = 'tag-ng'; tagText = `${ICON.cross} タグなし`; }
 
   row.innerHTML = `
     <div class="cell-orig">
@@ -1121,7 +1292,7 @@ function addRowFinal(idx) {
     <div><input type="text" class="name-input" value="${escHtml(r.name)}" placeholder="担当者名"></div>
     <div style="display:flex;align-items:center;gap:4px;">
       <input type="number" class="month-input" value="${r.month || ''}" placeholder="月" min="1" max="12" style="width:60px;text-align:center;">
-      <span style="font-size:12px;color:var(--muted2);">月</span>
+      <span style="font-size:12px;color:var(--text3);">月</span>
     </div>
     <div class="cell-preview" title="${fname}">${fname}</div>
     <div><button class="del-btn" title="削除">✕</button></div>
@@ -1161,10 +1332,10 @@ function addRowHoryuu(idx) {
     row.innerHTML = `
       <div class="cell-orig">
         <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
-        <div class="tag-status tag-ng">✗ タグなし</div>
+        <div class="tag-status tag-ng">${ICON.cross} タグなし</div>
       </div>
       <div style="grid-column:2/8; display:flex; align-items:center;">
-        <span style="color:var(--danger); font-size:13px; font-weight:700;">保留確定請求書ではありません。</span>
+        <span style="color:var(--red); font-size:13px; font-weight:700;">保留確定請求書ではありません。</span>
       </div>
       <div><button class="del-btn" title="削除">✕</button></div>
     `;
@@ -1174,8 +1345,8 @@ function addRowHoryuu(idx) {
   }
 
   const fname = buildFilenameHoryuu(r.name, r.date, r.isCorrection);
-  let tagClass = 'tag-ok', tagText = `✓ 保留確定タグ検出  📅 ${r.date}`;
-  if (!r.date) { tagClass = 'tag-warn'; tagText = '✓ 保留確定タグ検出  ⚠ 日付なし'; }
+  let tagClass = 'tag-ok', tagText = `${ICON.check} 保留確定タグ検出 ${ICON.cal} ${r.date}`;
+  if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} 保留確定タグ検出 ${ICON.warn} 日付なし`; }
 
   row.innerHTML = `
     <div class="cell-orig">
@@ -1232,10 +1403,10 @@ function addRowGroup(idx) {
     row.innerHTML = `
       <div class="cell-orig">
         <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
-        <div class="tag-status tag-ng">✗ タグなし</div>
+        <div class="tag-status tag-ng">${ICON.cross} タグなし</div>
       </div>
       <div style="grid-column:2/8; display:flex; align-items:center;">
-        <span style="color:var(--danger); font-size:13px; font-weight:700;">グループ用請求書ではありません。</span>
+        <span style="color:var(--red); font-size:13px; font-weight:700;">グループ用請求書ではありません。</span>
       </div>
       <div><button class="del-btn" title="削除">✕</button></div>
     `;
@@ -1245,12 +1416,8 @@ function addRowGroup(idx) {
   }
 
   const fname = buildFilenameGroup(r.name, r.date, r.period, r.isCorrection);
-  let tagClass = 'tag-ok', tagText = `✓ グループタグ検出  📅 ${r.date}  📋 ${r.period}`;
-  if (!r.date) { tagClass = 'tag-warn'; tagText = '✓ グループタグ検出  ⚠ 日付なし'; }
-
-  const isXClass = r.isX ? 'is-x' : '';
-  const xText = r.isX ? '請求なし' : '請求あり';
-  const prevClass = r.isX ? 'is-x' : '';
+  let tagClass = 'tag-ok', tagText = `${ICON.check} グループタグ検出 ${ICON.cal} ${r.date} ${ICON.list} ${r.period}`;
+  if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} グループタグ検出 ${ICON.warn} 日付なし`; }
 
   row.innerHTML = `
     <div class="cell-orig">
@@ -1259,7 +1426,7 @@ function addRowGroup(idx) {
     </div>
     <div><input type="text" class="name-input" value="${escHtml(r.name)}" placeholder="会社名・担当者名"></div>
     <div><input type="number" class="amt-input" value="${r.amount !== -1 ? r.amount : ''}" placeholder="0"></div>
-    <div><button class="x-btn ${isXClass}">${xText}</button></div>
+    <div><input type="text" class="period-input" value="${escHtml(r.period || '')}" placeholder="yyyymmdd-dd" style="font-family:'Courier New',monospace;font-size:11px;color:var(--cyan);"></div>
     <div><input type="text" class="date-input" value="${r.date || ''}" placeholder="yyyymmdd" maxlength="8"></div>
     <div>
       <label class="corr-wrap">
@@ -1267,39 +1434,33 @@ function addRowGroup(idx) {
         <span>訂正分</span>
       </label>
     </div>
-    <div class="cell-preview ${prevClass}" title="${fname}">${fname}</div>
+    <div class="cell-preview" title="${fname}">${fname}</div>
     <div><button class="del-btn" title="削除">✕</button></div>
   `;
 
-  const nameInput = row.querySelector('.name-input');
-  const amtInput  = row.querySelector('.amt-input');
-  const xBtn      = row.querySelector('.x-btn');
-  const dateInput = row.querySelector('.date-input');
-  const corrCheck = row.querySelector('.corr-check');
-  const preview   = row.querySelector('.cell-preview');
-  const delBtn    = row.querySelector('.del-btn');
+  const nameInput   = row.querySelector('.name-input');
+  const amtInput    = row.querySelector('.amt-input');
+  const periodInput = row.querySelector('.period-input');
+  const dateInput   = row.querySelector('.date-input');
+  const corrCheck   = row.querySelector('.corr-check');
+  const preview     = row.querySelector('.cell-preview');
+  const delBtn      = row.querySelector('.del-btn');
 
   const refresh = () => {
     pdfRows[idx].name        = nameInput.value.trim();
     pdfRows[idx].amount      = amtInput.value !== '' ? parseInt(amtInput.value) : -1;
+    pdfRows[idx].period      = periodInput.value.trim() || null;
     pdfRows[idx].date        = dateInput.value.trim() || null;
     pdfRows[idx].isCorrection = corrCheck.checked;
     const fn = buildFilenameGroup(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].period, pdfRows[idx].isCorrection);
     preview.textContent = fn;
     preview.title = fn;
-    preview.className = 'cell-preview' + (pdfRows[idx].isX ? ' is-x' : '');
     execBtn.disabled = !pdfRows.some(r => r.isGroup && r.name && r.date);
   };
 
-  xBtn.addEventListener('click', () => {
-    pdfRows[idx].isX = !pdfRows[idx].isX;
-    xBtn.textContent = pdfRows[idx].isX ? '請求なし' : '請求あり';
-    xBtn.className = 'x-btn' + (pdfRows[idx].isX ? ' is-x' : '');
-    refresh();
-  });
-
   nameInput.addEventListener('input', refresh);
   amtInput.addEventListener('input', refresh);
+  periodInput.addEventListener('input', refresh);
   dateInput.addEventListener('input', refresh);
   corrCheck.addEventListener('change', refresh);
   delBtn.addEventListener('click', () => { pdfRows.splice(idx, 1); renderRows(); });
@@ -1339,7 +1500,7 @@ execBtn.addEventListener('click', () => {
   footerRename.style.display = 'none';
   footerDl.style.display = 'flex';
   statusLbl.textContent = '';
-  statusLbl.style.color = 'var(--muted2)';
+  statusLbl.style.color = 'var(--text3)';
 });
 
 // ── 戻る ──
@@ -1367,8 +1528,8 @@ dlOneBtn.addEventListener('click', async () => {
     downloadFile(items[i]);
     statusLbl.textContent = `ダウンロード中 ${i + 1}/${items.length}`;
   }
-  statusLbl.textContent = `✓  ${items.length}件 完了`;
-  statusLbl.style.color = 'var(--success)';
+  statusLbl.innerHTML = `${ICON.check} ${items.length}件 完了`;
+  statusLbl.style.color = 'var(--green)';
   dlOneBtn.disabled = false;
   dlZipBtn.disabled = false;
 });
@@ -1388,7 +1549,7 @@ dlZipBtn.addEventListener('click', async () => {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
   }
   statusLbl.textContent = 'ZIP作成中…';
-  statusLbl.style.color = 'var(--muted2)';
+  statusLbl.style.color = 'var(--text3)';
   dlOneBtn.disabled = true;
   dlZipBtn.disabled = true;
   const zip = new JSZip();
@@ -1427,8 +1588,8 @@ dlZipBtn.addEventListener('click', async () => {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 2000);
-  statusLbl.textContent = `✓  ZIP完了 (${items.length}件)`;
-  statusLbl.style.color = 'var(--success)';
+  statusLbl.innerHTML = `${ICON.check} ZIP完了 (${items.length}件)`;
+  statusLbl.style.color = 'var(--green)';
   dlOneBtn.disabled = false;
   dlZipBtn.disabled = false;
 });
