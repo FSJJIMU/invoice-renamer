@@ -9,29 +9,29 @@
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap');
 
   :root {
-    --bg:        #090909;
-    --s1:        #0f0f0f;
-    --s2:        #141414;
-    --s3:        #1a1a1a;
-    --s4:        #202020;
-    --line:      #1c1c1c;
-    --line2:     #242424;
-    --line3:     #2e2e2e;
+    --bg:        #0a0a0a;
+    --s1:        #101010;
+    --s2:        #161616;
+    --s3:        #1c1c1c;
+    --s4:        #222222;
+    --line:      #1e1e1e;
+    --line2:     #2a2a2a;
+    --line3:     #383838;
     --gold:      #e8c547;
     --gold2:     #c9a82e;
     --gold3:     #6b5010;
-    --golddim:   rgba(232,197,71,0.07);
-    --goldglow:  rgba(232,197,71,0.18);
+    --golddim:   rgba(232,197,71,0.08);
+    --goldglow:  rgba(232,197,71,0.20);
     --teal:      #3eb8c8;
     --tealdim:   rgba(62,184,200,0.08);
     --red:       #e05252;
-    --reddim:    rgba(224,82,82,0.08);
+    --reddim:    rgba(224,82,82,0.09);
     --green:     #3dba5f;
     --orange:    #f0a020;
-    --white:     #f0f0f0;
-    --g1:        #909090;
-    --g2:        #555555;
-    --g3:        #2a2a2a;
+    --white:     #ebebeb;
+    --g1:        #a0a0a0;
+    --g2:        #606060;
+    --g3:        #383838;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -76,7 +76,7 @@
   .sb-logo-sub {
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    color: var(--g2);
+    color: #585858;
     letter-spacing: 0.16em;
     text-transform: uppercase;
     margin-top: 6px;
@@ -85,7 +85,7 @@
   .sb-section-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    color: var(--g2);
+    color: #505050;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     padding: 20px 24px 8px;
@@ -134,7 +134,7 @@
   .mode-btn-name {
     font-size: 12px;
     font-weight: 500;
-    color: var(--g1);
+    color: #7a7a7a;
     transition: color 0.15s;
   }
   .mode-btn.active .mode-btn-name { color: var(--white); }
@@ -195,8 +195,8 @@
   /* ドロップゾーン */
   #dropzone {
     margin: 20px 28px 0;
-    background: var(--s1);
-    border: 1px dashed var(--line3);
+    background: var(--s2);
+    border: 1px dashed #404040;
     border-radius: 10px;
     height: 84px;
     display: flex;
@@ -218,13 +218,14 @@
   }
   #dropzone:hover::after, #dropzone.drag-over::after { opacity: 1; }
   #dropzone:hover, #dropzone.drag-over {
-    border-color: var(--gold2);
+    border-color: var(--gold);
     border-style: solid;
+    background: var(--s3);
   }
   #dropzone-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
-    color: var(--g2);
+    color: #808080;
     pointer-events: none;
     user-select: none;
     letter-spacing: 0.06em;
@@ -811,7 +812,7 @@ function switchMode(mode) {
     headerTitle.textContent = '最終請求リネーム';
     colHeaderDaily.style.display = 'none'; colHeaderFinal.style.display = '';
     colHeaderHoryuu.style.display = 'none'; colHeaderGroup.style.display = 'none';
-    bulkMonthWrap.style.display = 'flex';
+    bulkMonthWrap.style.display = 'none';
   } else if (mode === 'horyuu') {
     btnHoryuu.classList.add('active');  btnDaily.classList.remove('active');
     btnFinal.classList.remove('active'); btnGroup.classList.remove('active');
@@ -1091,7 +1092,13 @@ function renderRows() {
     countLbl.textContent = '';
     dupLbl.textContent = '';
     execBtn.disabled = true;
+    bulkMonthWrap.style.display = 'none';
     return;
+  }
+
+  // 最終請求モードのときだけ一括変更UIを表示
+  if (currentMode === 'final') {
+    bulkMonthWrap.style.display = 'flex';
   }
 
   const found = pdfRows.filter(r => r.found).length;
