@@ -455,6 +455,7 @@
   <div class="mode-switch">
     <button class="mode-btn active" id="btn-daily">日払い請求書</button>
     <button class="mode-btn" id="btn-horyuu">保留確定請求書</button>
+    <button class="mode-btn" id="btn-group">グループ用請求</button>
     <button class="mode-btn" id="btn-final">最終請求</button>
   </div>
 </header>
@@ -545,6 +546,18 @@
     <span>新ファイル名プレビュー</span>
     <span></span>
   </div>
+  <!-- COL HEADER グループ用請求 -->
+  <div class="col-header" id="col-header-group" style="display:none;">
+    <span>元ファイル名</span>
+    <span>請求書名義</span>
+    <span>請求金額</span>
+    <span>稼働期間</span>
+    <span>発行日</span>
+    <span>訂正分</span>
+    <span>新ファイル名プレビュー</span>
+    <span></span>
+  </div>
+
   <div id="rows-container"></div>
 </main>
 
@@ -588,10 +601,12 @@ const statusLbl     = document.getElementById('status-lbl');
 const btnDaily      = document.getElementById('btn-daily');
 const btnFinal      = document.getElementById('btn-final');
 const btnHoryuu     = document.getElementById('btn-horyuu');
+const btnGroup      = document.getElementById('btn-group');
 const headerTitle   = document.getElementById('header-title');
 const colHeaderDaily  = document.getElementById('col-header-daily');
 const colHeaderFinal  = document.getElementById('col-header-final');
 const colHeaderHoryuu = document.getElementById('col-header-horyuu');
+const colHeaderGroup  = document.getElementById('col-header-group');
 const bulkMonthWrap  = document.getElementById('bulk-month-wrap');
 const bulkMonthInput = document.getElementById('bulk-month-input');
 const bulkMonthBtn   = document.getElementById('bulk-month-btn');
@@ -613,37 +628,39 @@ function switchMode(mode) {
   footerRename.style.display = 'flex';
 
   if (mode === 'daily') {
-    btnDaily.classList.add('active');
-    btnFinal.classList.remove('active');
-    btnHoryuu.classList.remove('active');
+    btnDaily.classList.add('active');   btnFinal.classList.remove('active');
+    btnHoryuu.classList.remove('active'); btnGroup.classList.remove('active');
     headerTitle.textContent = '日払い請求書リネームツール';
-    colHeaderDaily.style.display = '';
-    colHeaderFinal.style.display = 'none';
-    colHeaderHoryuu.style.display = 'none';
+    colHeaderDaily.style.display = ''; colHeaderFinal.style.display = 'none';
+    colHeaderHoryuu.style.display = 'none'; colHeaderGroup.style.display = 'none';
     bulkMonthWrap.style.display = 'none';
   } else if (mode === 'final') {
-    btnFinal.classList.add('active');
-    btnDaily.classList.remove('active');
-    btnHoryuu.classList.remove('active');
+    btnFinal.classList.add('active');   btnDaily.classList.remove('active');
+    btnHoryuu.classList.remove('active'); btnGroup.classList.remove('active');
     headerTitle.textContent = '最終請求リネームツール';
-    colHeaderDaily.style.display = 'none';
-    colHeaderFinal.style.display = '';
-    colHeaderHoryuu.style.display = 'none';
+    colHeaderDaily.style.display = 'none'; colHeaderFinal.style.display = '';
+    colHeaderHoryuu.style.display = 'none'; colHeaderGroup.style.display = 'none';
     bulkMonthWrap.style.display = 'flex';
-  } else {
-    btnHoryuu.classList.add('active');
-    btnDaily.classList.remove('active');
-    btnFinal.classList.remove('active');
+  } else if (mode === 'horyuu') {
+    btnHoryuu.classList.add('active');  btnDaily.classList.remove('active');
+    btnFinal.classList.remove('active'); btnGroup.classList.remove('active');
     headerTitle.textContent = '保留確定請求書リネームツール';
-    colHeaderDaily.style.display = 'none';
-    colHeaderFinal.style.display = 'none';
-    colHeaderHoryuu.style.display = '';
+    colHeaderDaily.style.display = 'none'; colHeaderFinal.style.display = 'none';
+    colHeaderHoryuu.style.display = ''; colHeaderGroup.style.display = 'none';
+    bulkMonthWrap.style.display = 'none';
+  } else {
+    btnGroup.classList.add('active');   btnDaily.classList.remove('active');
+    btnFinal.classList.remove('active'); btnHoryuu.classList.remove('active');
+    headerTitle.textContent = 'グループ用請求リネームツール';
+    colHeaderDaily.style.display = 'none'; colHeaderFinal.style.display = 'none';
+    colHeaderHoryuu.style.display = 'none'; colHeaderGroup.style.display = '';
     bulkMonthWrap.style.display = 'none';
   }
 }
 btnDaily.addEventListener('click', () => switchMode('daily'));
 btnFinal.addEventListener('click', () => switchMode('final'));
 btnHoryuu.addEventListener('click', () => switchMode('horyuu'));
+btnGroup.addEventListener('click', () => switchMode('group'));
 
 // ── 対象月 一括適用 ──
 bulkMonthBtn.addEventListener('click', () => {
@@ -722,36 +739,47 @@ function normalize(text) {
 function parseTag(rawText) {
   const c = normalize(rawText);
   const idx = c.indexOf('##INV');
-  const raw = idx >= 0 ? c.slice(idx, idx + 70) : '（タグなし）';
+  const raw = idx >= 0 ? c.slice(idx, idx + 80) : '（タグなし）';
+
+  // グループパターン: ##INV:名前:金額:日付:グループ:期間##
+  let m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):グループ:([^#]+)##/i);
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: m[4], found: true, isHoryuu: false, isGroup: true, raw };
+
+  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):グループ:([^#]+)##/i);
+  if (m) {
+    const d = m[3];
+    const date = d.slice(0,4) + '0' + d.slice(4);
+    return { name: m[1], amount: parseInt(m[2]), date, period: m[4], found: true, isHoryuu: false, isGroup: true, raw };
+  }
 
   // 保留確定パターン: ##INV:名前:金額:日付:保留確定##
-  let m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):保留確定##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], found: true, isHoryuu: true, raw };
+  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):保留確定##/i);
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: true, isGroup: false, raw };
 
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):保留確定##/i);
   if (m) {
     const d = m[3];
     const date = d.slice(0, 4) + '0' + d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, found: true, isHoryuu: true, raw };
+    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: true, isGroup: false, raw };
   }
 
   // パターン1: 8桁日付
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8})##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], found: true, isHoryuu: false, raw };
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, raw };
 
-  // パターン2: 7桁日付（月が1桁）→ 0補完
+  // パターン2: 7桁日付
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7})##/i);
   if (m) {
     const d = m[3];
     const date = d.slice(0, 4) + '0' + d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, found: true, isHoryuu: false, raw };
+    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, raw };
   }
 
   // パターン3: 日付なし
   m = c.match(/##INV:([^:#]+):(-?\d+)##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: null, found: true, isHoryuu: false, raw };
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: null, period: null, found: true, isHoryuu: false, isGroup: false, raw };
 
-  return { name: '', amount: -1, date: null, found: false, isHoryuu: false, raw };
+  return { name: '', amount: -1, date: null, period: null, found: false, isHoryuu: false, isGroup: false, raw };
 }
 
 // ── PDF テキスト抽出 ──
@@ -807,6 +835,15 @@ function buildFilenameHoryuu(name, date, isCorrection) {
   return base + '.pdf';
 }
 
+// ── ファイル名生成（グループ用請求） ──
+function buildFilenameGroup(name, date, period, isCorrection) {
+  const dateStr   = date   || '????????';
+  const periodStr = period || '??-??';
+  let base = `${periodStr}稼働分請求書${dateStr}${name}様`;
+  if (isCorrection) base += ' 訂正分';
+  return base + '.pdf';
+}
+
 // ── 重複検出 ──
 function detectDuplicates(rows) {
   const nameCount = {};
@@ -858,9 +895,11 @@ async function processFiles(files) {
       amount: p.amount,
       date: p.date,
       month: month,
+      period: p.period,
       isX: p.amount === 0,
       isCorrection: false,
       isHoryuu: p.isHoryuu,
+      isGroup: p.isGroup,
       found: p.found,
       raw: p.raw,
       dupPrefix: ''
@@ -890,19 +929,22 @@ function renderRows() {
 
   if (currentMode === 'final') {
     pdfRows.forEach((r, idx) => addRowFinal(idx));
-    execBtn.disabled = !pdfRows.some(r => r.name);
+    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && r.name);
     dupLbl.textContent = '';
   } else if (currentMode === 'horyuu') {
-    // 保留確定モード：保留確定タグがないものはエラー表示
     pdfRows.forEach((r, idx) => addRowHoryuu(idx));
     execBtn.disabled = !pdfRows.some(r => r.isHoryuu && r.name && r.date);
+    dupLbl.textContent = '';
+  } else if (currentMode === 'group') {
+    pdfRows.forEach((r, idx) => addRowGroup(idx));
+    execBtn.disabled = !pdfRows.some(r => r.isGroup && r.name && r.date);
     dupLbl.textContent = '';
   } else {
     // 日払いモード
     const dupTotal = detectDuplicates(pdfRows);
     dupLbl.textContent = dupTotal > 0 ? `  ⚠ 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
     pdfRows.forEach((r, idx) => addRow(idx));
-    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && r.name && r.date);
+    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && r.name && r.date);
   }
 }
 
@@ -922,6 +964,23 @@ function addRow(idx) {
       </div>
       <div style="grid-column:2/8; display:flex; align-items:center;">
         <span style="color:var(--danger); font-size:13px; font-weight:700;">こちらは保留確定請求書です。日払い請求書ではありません。</span>
+      </div>
+      <div><button class="del-btn" title="削除">✕</button></div>
+    `;
+    row.querySelector('.del-btn').addEventListener('click', () => { pdfRows.splice(idx, 1); renderRows(); });
+    rowsContainer.appendChild(row);
+    return;
+  }
+
+  // グループタグが含まれている場合はエラー表示
+  if (r.isGroup) {
+    row.innerHTML = `
+      <div class="cell-orig">
+        <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
+        <div class="tag-status tag-ng">✗ グループタグ検出</div>
+      </div>
+      <div style="grid-column:2/8; display:flex; align-items:center;">
+        <span style="color:var(--danger); font-size:13px; font-weight:700;">こちらはグループ用請求書です。日払い請求書ではありません。</span>
       </div>
       <div><button class="del-btn" title="削除">✕</button></div>
     `;
@@ -1024,11 +1083,30 @@ function addRow(idx) {
 // ── 行追加（最終請求モード） ──
 function addRowFinal(idx) {
   const r = pdfRows[idx];
-  const fname = buildFilenameFinal(r.name || '', r.month);
 
   const row = document.createElement('div');
   row.className = 'pdf-row-final';
   row.dataset.idx = idx;
+
+  // 保留確定・グループタグが含まれている場合はエラー表示
+  if (r.isHoryuu || r.isGroup) {
+    const label = r.isHoryuu ? '保留確定請求書' : 'グループ用請求書';
+    row.innerHTML = `
+      <div class="cell-orig">
+        <div class="fname" title="${r.orig}">${r.orig.length > 26 ? r.orig.slice(0,26)+'…' : r.orig}</div>
+        <div class="tag-status tag-ng">✗ ${r.isHoryuu ? '保留確定' : 'グループ'}タグ検出</div>
+      </div>
+      <div style="grid-column:2/5; display:flex; align-items:center;">
+        <span style="color:var(--danger); font-size:13px; font-weight:700;">こちらは${label}です。最終請求ではありません。</span>
+      </div>
+      <div><button class="del-btn" title="削除">✕</button></div>
+    `;
+    row.querySelector('.del-btn').addEventListener('click', () => { pdfRows.splice(idx, 1); renderRows(); });
+    rowsContainer.appendChild(row);
+    return;
+  }
+
+  const fname = buildFilenameFinal(r.name || '', r.month);
 
   let tagClass, tagText;
   if (r.found && r.month) { tagClass = 'tag-ok'; tagText = `✓ タグ検出  📅 ${r.month}月`; }
@@ -1142,12 +1220,101 @@ function addRowHoryuu(idx) {
   rowsContainer.appendChild(row);
 }
 
+// ── 行追加（グループ用請求モード） ──
+function addRowGroup(idx) {
+  const r = pdfRows[idx];
+  const row = document.createElement('div');
+  row.className = 'pdf-row';
+  row.dataset.idx = idx;
+
+  // グループタグがない場合エラー表示
+  if (!r.isGroup) {
+    row.innerHTML = `
+      <div class="cell-orig">
+        <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
+        <div class="tag-status tag-ng">✗ タグなし</div>
+      </div>
+      <div style="grid-column:2/8; display:flex; align-items:center;">
+        <span style="color:var(--danger); font-size:13px; font-weight:700;">グループ用請求書ではありません。</span>
+      </div>
+      <div><button class="del-btn" title="削除">✕</button></div>
+    `;
+    row.querySelector('.del-btn').addEventListener('click', () => { pdfRows.splice(idx, 1); renderRows(); });
+    rowsContainer.appendChild(row);
+    return;
+  }
+
+  const fname = buildFilenameGroup(r.name, r.date, r.period, r.isCorrection);
+  let tagClass = 'tag-ok', tagText = `✓ グループタグ検出  📅 ${r.date}  📋 ${r.period}`;
+  if (!r.date) { tagClass = 'tag-warn'; tagText = '✓ グループタグ検出  ⚠ 日付なし'; }
+
+  const isXClass = r.isX ? 'is-x' : '';
+  const xText = r.isX ? '請求なし' : '請求あり';
+  const prevClass = r.isX ? 'is-x' : '';
+
+  row.innerHTML = `
+    <div class="cell-orig">
+      <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
+      <div class="tag-status ${tagClass}">${tagText}</div>
+    </div>
+    <div><input type="text" class="name-input" value="${escHtml(r.name)}" placeholder="会社名・担当者名"></div>
+    <div><input type="number" class="amt-input" value="${r.amount !== -1 ? r.amount : ''}" placeholder="0"></div>
+    <div><button class="x-btn ${isXClass}">${xText}</button></div>
+    <div><input type="text" class="date-input" value="${r.date || ''}" placeholder="yyyymmdd" maxlength="8"></div>
+    <div>
+      <label class="corr-wrap">
+        <input type="checkbox" class="corr-check" ${r.isCorrection ? 'checked' : ''}>
+        <span>訂正分</span>
+      </label>
+    </div>
+    <div class="cell-preview ${prevClass}" title="${fname}">${fname}</div>
+    <div><button class="del-btn" title="削除">✕</button></div>
+  `;
+
+  const nameInput = row.querySelector('.name-input');
+  const amtInput  = row.querySelector('.amt-input');
+  const xBtn      = row.querySelector('.x-btn');
+  const dateInput = row.querySelector('.date-input');
+  const corrCheck = row.querySelector('.corr-check');
+  const preview   = row.querySelector('.cell-preview');
+  const delBtn    = row.querySelector('.del-btn');
+
+  const refresh = () => {
+    pdfRows[idx].name        = nameInput.value.trim();
+    pdfRows[idx].amount      = amtInput.value !== '' ? parseInt(amtInput.value) : -1;
+    pdfRows[idx].date        = dateInput.value.trim() || null;
+    pdfRows[idx].isCorrection = corrCheck.checked;
+    const fn = buildFilenameGroup(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].period, pdfRows[idx].isCorrection);
+    preview.textContent = fn;
+    preview.title = fn;
+    preview.className = 'cell-preview' + (pdfRows[idx].isX ? ' is-x' : '');
+    execBtn.disabled = !pdfRows.some(r => r.isGroup && r.name && r.date);
+  };
+
+  xBtn.addEventListener('click', () => {
+    pdfRows[idx].isX = !pdfRows[idx].isX;
+    xBtn.textContent = pdfRows[idx].isX ? '請求なし' : '請求あり';
+    xBtn.className = 'x-btn' + (pdfRows[idx].isX ? ' is-x' : '');
+    refresh();
+  });
+
+  nameInput.addEventListener('input', refresh);
+  amtInput.addEventListener('input', refresh);
+  dateInput.addEventListener('input', refresh);
+  corrCheck.addEventListener('change', refresh);
+  delBtn.addEventListener('click', () => { pdfRows.splice(idx, 1); renderRows(); });
+
+  rowsContainer.appendChild(row);
+}
+
 // ── ダウンロード（個別） ──
 function downloadFile(r) {
   const fn = currentMode === 'final'
     ? buildFilenameFinal(r.name, r.month)
     : currentMode === 'horyuu'
     ? buildFilenameHoryuu(r.name, r.date, r.isCorrection)
+    : currentMode === 'group'
+    ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection)
     : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
   const url = URL.createObjectURL(r.file);
   const a = document.createElement('a');
@@ -1162,10 +1329,12 @@ function downloadFile(r) {
 // ── リネーム実行 → DLフェーズへ切り替え ──
 execBtn.addEventListener('click', () => {
   const items = currentMode === 'final'
-    ? pdfRows.filter(r => r.name)
+    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name)
     : currentMode === 'horyuu'
     ? pdfRows.filter(r => r.isHoryuu && r.name && r.date)
-    : pdfRows.filter(r => !r.isHoryuu && r.name && r.date);
+    : currentMode === 'group'
+    ? pdfRows.filter(r => r.isGroup && r.name && r.date)
+    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name && r.date);
   if (!items.length) return;
   footerRename.style.display = 'none';
   footerDl.style.display = 'flex';
@@ -1183,10 +1352,12 @@ backBtn.addEventListener('click', () => {
 // ── 1件ずつダウンロード ──
 dlOneBtn.addEventListener('click', async () => {
   const items = currentMode === 'final'
-    ? pdfRows.filter(r => r.name)
+    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name)
     : currentMode === 'horyuu'
     ? pdfRows.filter(r => r.isHoryuu && r.name && r.date)
-    : pdfRows.filter(r => !r.isHoryuu && r.name && r.date);
+    : currentMode === 'group'
+    ? pdfRows.filter(r => r.isGroup && r.name && r.date)
+    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name && r.date);
   if (!items.length) return;
   dlOneBtn.disabled = true;
   dlZipBtn.disabled = true;
@@ -1205,10 +1376,12 @@ dlOneBtn.addEventListener('click', async () => {
 // ── ZIPにまとめてDL ──
 dlZipBtn.addEventListener('click', async () => {
   const items = currentMode === 'final'
-    ? pdfRows.filter(r => r.name)
+    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name)
     : currentMode === 'horyuu'
     ? pdfRows.filter(r => r.isHoryuu && r.name && r.date)
-    : pdfRows.filter(r => !r.isHoryuu && r.name && r.date);
+    : currentMode === 'group'
+    ? pdfRows.filter(r => r.isGroup && r.name && r.date)
+    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name && r.date);
   if (!items.length) return;
   if (!window.JSZip) {
     statusLbl.textContent = 'ZIPライブラリを読み込み中…';
@@ -1224,6 +1397,8 @@ dlZipBtn.addEventListener('click', async () => {
       ? buildFilenameFinal(r.name, r.month)
       : currentMode === 'horyuu'
       ? buildFilenameHoryuu(r.name, r.date, r.isCorrection)
+      : currentMode === 'group'
+      ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection)
       : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
     const buf = await r.file.arrayBuffer();
     zip.file(fn, buf);
@@ -1239,6 +1414,10 @@ dlZipBtn.addEventListener('click', async () => {
     const firstDate = items[0].date || '';
     const day = firstDate.length >= 8 ? parseInt(firstDate.slice(6, 8)) : '';
     a.download = day ? `${day}日発行分.zip` : '保留確定請求書.zip';
+  } else if (currentMode === 'group') {
+    const firstDate = items[0].date || '';
+    const day = firstDate.length >= 8 ? parseInt(firstDate.slice(6, 8)) : '';
+    a.download = day ? `${day}日発行分.zip` : 'グループ用請求書.zip';
   } else {
     const firstDate = items[0].date || '';
     const day = firstDate.length >= 8 ? parseInt(firstDate.slice(6, 8)) : '';
