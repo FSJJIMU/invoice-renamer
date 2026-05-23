@@ -933,45 +933,52 @@ function parseTag(rawText) {
   const idx = c.indexOf('##INV');
   const raw = idx >= 0 ? c.slice(idx, idx + 80) : '（タグなし）';
 
+  // JPR保留確定パターン（保留確定より先にマッチさせる）
+  let m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):JPR保留確定##/i);
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: true, raw };
+
+  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):JPR保留確定##/i);
+  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
+    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: true, raw }; }
+
+  // JPR日払いパターン
+  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):JPR##/i);
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: true, isJPRHoryuu: false, raw };
+
+  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):JPR##/i);
+  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
+    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: true, isJPRHoryuu: false, raw }; }
+
   // グループパターン: ##INV:名前:金額:日付:グループ:期間##
-  let m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):グループ:([^#]+)##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: m[4], found: true, isHoryuu: false, isGroup: true, raw };
+  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):グループ:([^#]+)##/i);
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: m[4], found: true, isHoryuu: false, isGroup: true, isJPR: false, isJPRHoryuu: false, raw };
 
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):グループ:([^#]+)##/i);
-  if (m) {
-    const d = m[3];
-    const date = d.slice(0,4) + '0' + d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: m[4], found: true, isHoryuu: false, isGroup: true, raw };
-  }
+  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
+    return { name: m[1], amount: parseInt(m[2]), date, period: m[4], found: true, isHoryuu: false, isGroup: true, isJPR: false, isJPRHoryuu: false, raw }; }
 
-  // 保留確定パターン: ##INV:名前:金額:日付:保留確定##
+  // 保留確定パターン
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):保留確定##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: true, isGroup: false, raw };
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: true, isGroup: false, isJPR: false, isJPRHoryuu: false, raw };
 
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):保留確定##/i);
-  if (m) {
-    const d = m[3];
-    const date = d.slice(0, 4) + '0' + d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: true, isGroup: false, raw };
-  }
+  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
+    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: true, isGroup: false, isJPR: false, isJPRHoryuu: false, raw }; }
 
   // パターン1: 8桁日付
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8})##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, raw };
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, raw };
 
   // パターン2: 7桁日付
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7})##/i);
-  if (m) {
-    const d = m[3];
-    const date = d.slice(0, 4) + '0' + d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, raw };
-  }
+  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
+    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, raw }; }
 
   // パターン3: 日付なし
   m = c.match(/##INV:([^:#]+):(-?\d+)##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: null, period: null, found: true, isHoryuu: false, isGroup: false, raw };
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: null, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, raw };
 
-  return { name: '', amount: -1, date: null, period: null, found: false, isHoryuu: false, isGroup: false, raw };
+  return { name: '', amount: -1, date: null, period: null, found: false, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, raw };
 }
 
 // ── PDF テキスト抽出 ──
@@ -992,10 +999,11 @@ async function extractText(file) {
 }
 
 // ── ファイル名生成（日払い） ──
-function buildFilename(name, amount, date, isX, isCorrection, dupPrefix) {
+function buildFilename(name, amount, date, isX, isCorrection, dupPrefix, isJPR) {
   const prefix = isX ? '×' : '';
+  const jpr    = isJPR ? 'JPR' : '';
   const dateStr = date || '????????';
-  let base = `${prefix}日払い請求書${dateStr}${name}様`;
+  let base = `${prefix}${jpr}日払い請求書${dateStr}${name}様`;
   if (isCorrection) base += ' 訂正分';
   if (dupPrefix) base = dupPrefix + ' ' + base;
   return base + '.pdf';
@@ -1020,9 +1028,10 @@ function buildFilenameFinal(name, month) {
 }
 
 // ── ファイル名生成（保留確定） ──
-function buildFilenameHoryuu(name, date, isCorrection) {
+function buildFilenameHoryuu(name, date, isCorrection, isJPRHoryuu) {
   const dateStr = date || '????????';
-  let base = `保留確定請求書${dateStr}${name}様`;
+  const jpr = isJPRHoryuu ? 'JPR' : '';
+  let base = `${jpr}保留確定請求書${dateStr}${name}様`;
   if (isCorrection) base += ' 訂正分';
   return base + '.pdf';
 }
@@ -1040,13 +1049,13 @@ function buildFilenameGroup(name, date, period, isCorrection) {
 function detectDuplicates(rows) {
   const nameCount = {};
   rows.forEach(r => {
-    const key = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '');
+    const key = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '', r.isJPR);
     nameCount[key] = (nameCount[key] || 0) + 1;
   });
   const tracker = {};
   let dupTotal = 0;
   rows.forEach(r => {
-    const key = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '');
+    const key = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '', r.isJPR);
     if (nameCount[key] > 1) {
       tracker[key] = (tracker[key] || 0) + 1;
       r.dupPrefix = tracker[key] === 1 ? '' : `※重複データ${tracker[key] - 1}`;
@@ -1092,6 +1101,8 @@ async function processFiles(files) {
       isCorrection: false,
       isHoryuu: p.isHoryuu,
       isGroup: p.isGroup,
+      isJPR: p.isJPR,
+      isJPRHoryuu: p.isJPRHoryuu,
       found: p.found,
       raw: p.raw,
       dupPrefix: ''
@@ -1131,7 +1142,7 @@ function renderRows() {
     dupLbl.textContent = '';
   } else if (currentMode === 'horyuu') {
     pdfRows.forEach((r, idx) => addRowHoryuu(idx));
-    execBtn.disabled = !pdfRows.some(r => r.isHoryuu && r.name && r.date);
+    execBtn.disabled = !pdfRows.some(r => (r.isHoryuu || r.isJPRHoryuu) && r.name && r.date);
     dupLbl.textContent = '';
   } else if (currentMode === 'group') {
     pdfRows.forEach((r, idx) => addRowGroup(idx));
@@ -1187,7 +1198,7 @@ function addRow(idx) {
     return;
   }
 
-  const fname = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
+  const fname = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR);
 
   row.className = 'pdf-row';
   row.dataset.idx = idx;
@@ -1355,7 +1366,7 @@ function addRowHoryuu(idx) {
   row.dataset.idx = idx;
 
   // 保留確定タグがない場合はエラー行
-  if (!r.isHoryuu) {
+  if (!r.isHoryuu && !r.isJPRHoryuu) {
     row.innerHTML = `
       <div class="cell-orig">
         <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
@@ -1371,9 +1382,10 @@ function addRowHoryuu(idx) {
     return;
   }
 
-  const fname = buildFilenameHoryuu(r.name, r.date, r.isCorrection);
-  let tagClass = 'tag-ok', tagText = `${ICON.check} 保留確定タグ検出 ${ICON.cal} ${r.date}`;
-  if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} 保留確定タグ検出 ${ICON.warn} 日付なし`; }
+  const fname = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu);
+  const horyuuLabel = r.isJPRHoryuu ? 'JPR保留確定' : '保留確定';
+  let tagClass = 'tag-ok', tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.cal} ${r.date}`;
+  if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.warn} 日付なし`; }
 
   row.innerHTML = `
     <div class="cell-orig">
@@ -1404,10 +1416,10 @@ function addRowHoryuu(idx) {
     pdfRows[idx].name        = nameInput.value.trim();
     pdfRows[idx].date        = dateInput.value.trim() || null;
     pdfRows[idx].isCorrection = corrCheck.checked;
-    const fn = buildFilenameHoryuu(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].isCorrection);
+    const fn = buildFilenameHoryuu(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].isCorrection, pdfRows[idx].isJPRHoryuu);
     preview.textContent = fn;
     preview.title = fn;
-    execBtn.disabled = !pdfRows.some(r => r.isHoryuu && r.name && r.date);
+    execBtn.disabled = !pdfRows.some(r => (r.isHoryuu || r.isJPRHoryuu) && r.name && r.date);
   };
 
   nameInput.addEventListener('input', refresh);
@@ -1500,10 +1512,10 @@ function downloadFile(r) {
   const fn = currentMode === 'final'
     ? buildFilenameFinal(r.name, r.month)
     : currentMode === 'horyuu'
-    ? buildFilenameHoryuu(r.name, r.date, r.isCorrection)
+    ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu)
     : currentMode === 'group'
     ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection)
-    : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
+    : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR);
   const url = URL.createObjectURL(r.file);
   const a = document.createElement('a');
   a.href = url;
@@ -1519,7 +1531,7 @@ execBtn.addEventListener('click', () => {
   const items = currentMode === 'final'
     ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name)
     : currentMode === 'horyuu'
-    ? pdfRows.filter(r => r.isHoryuu && r.name && r.date)
+    ? pdfRows.filter(r => (r.isHoryuu || r.isJPRHoryuu) && r.name && r.date)
     : currentMode === 'group'
     ? pdfRows.filter(r => r.isGroup && r.name && r.date)
     : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name && r.date);
@@ -1542,7 +1554,7 @@ dlOneBtn.addEventListener('click', async () => {
   const items = currentMode === 'final'
     ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name)
     : currentMode === 'horyuu'
-    ? pdfRows.filter(r => r.isHoryuu && r.name && r.date)
+    ? pdfRows.filter(r => (r.isHoryuu || r.isJPRHoryuu) && r.name && r.date)
     : currentMode === 'group'
     ? pdfRows.filter(r => r.isGroup && r.name && r.date)
     : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name && r.date);
@@ -1566,7 +1578,7 @@ dlZipBtn.addEventListener('click', async () => {
   const items = currentMode === 'final'
     ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name)
     : currentMode === 'horyuu'
-    ? pdfRows.filter(r => r.isHoryuu && r.name && r.date)
+    ? pdfRows.filter(r => (r.isHoryuu || r.isJPRHoryuu) && r.name && r.date)
     : currentMode === 'group'
     ? pdfRows.filter(r => r.isGroup && r.name && r.date)
     : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name && r.date);
@@ -1584,10 +1596,10 @@ dlZipBtn.addEventListener('click', async () => {
     const fn = currentMode === 'final'
       ? buildFilenameFinal(r.name, r.month)
       : currentMode === 'horyuu'
-      ? buildFilenameHoryuu(r.name, r.date, r.isCorrection)
+      ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu)
       : currentMode === 'group'
       ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection)
-      : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix);
+      : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR);
     const buf = await r.file.arrayBuffer();
     zip.file(fn, buf);
   }
