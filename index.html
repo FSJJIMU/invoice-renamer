@@ -933,52 +933,76 @@ function parseTag(rawText) {
   const idx = c.indexOf('##INV');
   const raw = idx >= 0 ? c.slice(idx, idx + 80) : '（タグなし）';
 
+  // BESTグループパターン（BESTグループはグループより先にマッチさせる）
+  let m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):BESTグループ:([^#]+)##/i);
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: m[4], found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: true, raw };
+
+  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):BESTグループ:([^#]+)##/i);
+  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
+    return { name: m[1], amount: parseInt(m[2]), date, period: m[4], found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: true, raw }; }
+
+  // BEST保留確定パターン（保留確定より先にマッチさせる）
+  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):BEST保留確定##/i);
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: true, isBESTGroup: false, raw };
+
+  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):BEST保留確定##/i);
+  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
+    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: true, isBESTGroup: false, raw }; }
+
+  // BEST日払いパターン
+  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):BEST##/i);
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: true, isBESTHoryuu: false, isBESTGroup: false, raw };
+
+  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):BEST##/i);
+  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
+    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: true, isBESTHoryuu: false, isBESTGroup: false, raw }; }
+
   // JPR保留確定パターン（保留確定より先にマッチさせる）
-  let m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):JPR保留確定##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: true, raw };
+  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):JPR保留確定##/i);
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: true, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
 
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):JPR保留確定##/i);
   if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: true, raw }; }
+    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: true, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw }; }
 
   // JPR日払いパターン
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):JPR##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: true, isJPRHoryuu: false, raw };
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: true, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
 
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):JPR##/i);
   if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: true, isJPRHoryuu: false, raw }; }
+    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: true, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw }; }
 
   // グループパターン: ##INV:名前:金額:日付:グループ:期間##
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):グループ:([^#]+)##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: m[4], found: true, isHoryuu: false, isGroup: true, isJPR: false, isJPRHoryuu: false, raw };
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: m[4], found: true, isHoryuu: false, isGroup: true, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
 
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):グループ:([^#]+)##/i);
   if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: m[4], found: true, isHoryuu: false, isGroup: true, isJPR: false, isJPRHoryuu: false, raw }; }
+    return { name: m[1], amount: parseInt(m[2]), date, period: m[4], found: true, isHoryuu: false, isGroup: true, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw }; }
 
   // 保留確定パターン
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):保留確定##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: true, isGroup: false, isJPR: false, isJPRHoryuu: false, raw };
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: true, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
 
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):保留確定##/i);
   if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: true, isGroup: false, isJPR: false, isJPRHoryuu: false, raw }; }
+    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: true, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw }; }
 
   // パターン1: 8桁日付
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8})##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, raw };
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
 
   // パターン2: 7桁日付
   m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7})##/i);
   if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, raw }; }
+    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw }; }
 
   // パターン3: 日付なし
   m = c.match(/##INV:([^:#]+):(-?\d+)##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: null, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, raw };
+  if (m) return { name: m[1], amount: parseInt(m[2]), date: null, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
 
-  return { name: '', amount: -1, date: null, period: null, found: false, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, raw };
+  return { name: '', amount: -1, date: null, period: null, found: false, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
 }
 
 // ── PDF テキスト抽出 ──
@@ -999,11 +1023,11 @@ async function extractText(file) {
 }
 
 // ── ファイル名生成（日払い） ──
-function buildFilename(name, amount, date, isX, isCorrection, dupPrefix, isJPR) {
+function buildFilename(name, amount, date, isX, isCorrection, dupPrefix, isJPR, isBEST) {
   const prefix = isX ? '×' : '';
-  const jpr    = isJPR ? 'JPR' : '';
+  const brand  = isJPR ? 'JPR' : (isBEST ? 'BEST' : '');
   const dateStr = date || '????????';
-  let base = `${prefix}${jpr}日払い請求書${dateStr}${name}様`;
+  let base = `${prefix}${brand}日払い請求書${dateStr}${name}様`;
   if (isCorrection) base += ' 訂正分';
   if (dupPrefix) base = dupPrefix + ' ' + base;
   return base + '.pdf';
@@ -1028,19 +1052,20 @@ function buildFilenameFinal(name, month) {
 }
 
 // ── ファイル名生成（保留確定） ──
-function buildFilenameHoryuu(name, date, isCorrection, isJPRHoryuu) {
+function buildFilenameHoryuu(name, date, isCorrection, isJPRHoryuu, isBESTHoryuu) {
   const dateStr = date || '????????';
-  const jpr = isJPRHoryuu ? 'JPR' : '';
-  let base = `${jpr}保留確定請求書${dateStr}${name}様`;
+  const brand = isJPRHoryuu ? 'JPR' : (isBESTHoryuu ? 'BEST' : '');
+  let base = `${brand}保留確定請求書${dateStr}${name}様`;
   if (isCorrection) base += ' 訂正分';
   return base + '.pdf';
 }
 
 // ── ファイル名生成（グループ用請求） ──
-function buildFilenameGroup(name, date, period, isCorrection) {
+function buildFilenameGroup(name, date, period, isCorrection, isBESTGroup) {
   const dateStr   = date   || '????????';
   const periodStr = period || '??-??';
-  let base = `${name}様 請求書 ${periodStr}稼働分 ${dateStr}`;
+  const brand = isBESTGroup ? 'BEST' : '';
+  let base = `${brand}${name}様 請求書 ${periodStr}稼働分 ${dateStr}`;
   if (isCorrection) base += ' 訂正分';
   return base + '.pdf';
 }
@@ -1049,13 +1074,13 @@ function buildFilenameGroup(name, date, period, isCorrection) {
 function detectDuplicates(rows) {
   const nameCount = {};
   rows.forEach(r => {
-    const key = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '', r.isJPR);
+    const key = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '', r.isJPR, r.isBEST);
     nameCount[key] = (nameCount[key] || 0) + 1;
   });
   const tracker = {};
   let dupTotal = 0;
   rows.forEach(r => {
-    const key = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '', r.isJPR);
+    const key = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '', r.isJPR, r.isBEST);
     if (nameCount[key] > 1) {
       tracker[key] = (tracker[key] || 0) + 1;
       r.dupPrefix = tracker[key] === 1 ? '' : `※重複データ${tracker[key] - 1}`;
@@ -1103,6 +1128,9 @@ async function processFiles(files) {
       isGroup: p.isGroup,
       isJPR: p.isJPR,
       isJPRHoryuu: p.isJPRHoryuu,
+      isBEST: p.isBEST,
+      isBESTHoryuu: p.isBESTHoryuu,
+      isBESTGroup: p.isBESTGroup,
       found: p.found,
       raw: p.raw,
       dupPrefix: ''
@@ -1138,22 +1166,22 @@ function renderRows() {
 
   if (currentMode === 'final') {
     pdfRows.forEach((r, idx) => addRowFinal(idx));
-    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && r.name);
+    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name);
     dupLbl.textContent = '';
   } else if (currentMode === 'horyuu') {
     pdfRows.forEach((r, idx) => addRowHoryuu(idx));
-    execBtn.disabled = !pdfRows.some(r => (r.isHoryuu || r.isJPRHoryuu) && r.name && r.date);
+    execBtn.disabled = !pdfRows.some(r => (r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu) && r.name && r.date);
     dupLbl.textContent = '';
   } else if (currentMode === 'group') {
     pdfRows.forEach((r, idx) => addRowGroup(idx));
-    execBtn.disabled = !pdfRows.some(r => r.isGroup && r.name && r.date);
+    execBtn.disabled = !pdfRows.some(r => (r.isGroup || r.isBESTGroup) && r.name && r.date);
     dupLbl.textContent = '';
   } else {
     // 日払いモード
     const dupTotal = detectDuplicates(pdfRows);
     dupLbl.innerHTML = dupTotal > 0 ? `${ICON.warn} 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
     pdfRows.forEach((r, idx) => addRow(idx));
-    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && r.name && r.date);
+    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name && r.date);
   }
 }
 
@@ -1165,14 +1193,15 @@ function addRow(idx) {
   row.dataset.idx = idx;
 
   // 保留確定タグが含まれている場合はエラー表示
-  if (r.isHoryuu) {
+  if (r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu) {
+    const label = r.isJPRHoryuu ? 'JPR保留確定' : (r.isBESTHoryuu ? 'BEST保留確定' : '保留確定');
     row.innerHTML = `
       <div class="cell-orig">
         <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
-        <div class="tag-status tag-ng">${ICON.cross} 保留確定タグ検出</div>
+        <div class="tag-status tag-ng">${ICON.cross} ${label}タグ検出</div>
       </div>
       <div style="grid-column:2/8; display:flex; align-items:center;">
-        <span style="color:var(--red); font-size:13px; font-weight:700;">こちらは保留確定請求書です。日払い請求書ではありません。</span>
+        <span style="color:var(--red); font-size:13px; font-weight:700;">こちらは${label}請求書です。日払い請求書ではありません。</span>
       </div>
       <div><button class="del-btn" title="削除">✕</button></div>
     `;
@@ -1182,14 +1211,15 @@ function addRow(idx) {
   }
 
   // グループタグが含まれている場合はエラー表示
-  if (r.isGroup) {
+  if (r.isGroup || r.isBESTGroup) {
+    const label = r.isBESTGroup ? 'BESTグループ用' : 'グループ用';
     row.innerHTML = `
       <div class="cell-orig">
         <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
-        <div class="tag-status tag-ng">${ICON.cross} グループタグ検出</div>
+        <div class="tag-status tag-ng">${ICON.cross} ${label}タグ検出</div>
       </div>
       <div style="grid-column:2/8; display:flex; align-items:center;">
-        <span style="color:var(--red); font-size:13px; font-weight:700;">こちらはグループ用請求書です。日払い請求書ではありません。</span>
+        <span style="color:var(--red); font-size:13px; font-weight:700;">こちらは${label}請求書です。日払い請求書ではありません。</span>
       </div>
       <div><button class="del-btn" title="削除">✕</button></div>
     `;
@@ -1198,7 +1228,7 @@ function addRow(idx) {
     return;
   }
 
-  const fname = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR);
+  const fname = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR, r.isBEST);
 
   row.className = 'pdf-row';
   row.dataset.idx = idx;
@@ -1297,13 +1327,22 @@ function addRowFinal(idx) {
   row.className = 'pdf-row-final';
   row.dataset.idx = idx;
 
-  // 保留確定・グループタグが含まれている場合はエラー表示
-  if (r.isHoryuu || r.isGroup) {
-    const label = r.isHoryuu ? '保留確定請求書' : 'グループ用請求書';
+  // 保留確定・グループ・JPR/BEST関連タグが含まれている場合はエラー表示
+  if (r.isHoryuu || r.isGroup || r.isJPRHoryuu || r.isBESTHoryuu || r.isBESTGroup) {
+    const label = r.isHoryuu ? '保留確定請求書'
+      : r.isGroup ? 'グループ用請求書'
+      : r.isJPRHoryuu ? 'JPR保留確定請求書'
+      : r.isBESTHoryuu ? 'BEST保留確定請求書'
+      : 'BESTグループ用請求書';
+    const tagLabel = r.isHoryuu ? '保留確定'
+      : r.isGroup ? 'グループ'
+      : r.isJPRHoryuu ? 'JPR保留確定'
+      : r.isBESTHoryuu ? 'BEST保留確定'
+      : 'BESTグループ';
     row.innerHTML = `
       <div class="cell-orig">
         <div class="fname" title="${r.orig}">${r.orig.length > 26 ? r.orig.slice(0,26)+'…' : r.orig}</div>
-        <div class="tag-status tag-ng">${ICON.cross} ${r.isHoryuu ? '保留確定' : 'グループ'}タグ検出</div>
+        <div class="tag-status tag-ng">${ICON.cross} ${tagLabel}タグ検出</div>
       </div>
       <div style="grid-column:2/5; display:flex; align-items:center;">
         <span style="color:var(--red); font-size:13px; font-weight:700;">こちらは${label}です。最終請求ではありません。</span>
@@ -1366,7 +1405,7 @@ function addRowHoryuu(idx) {
   row.dataset.idx = idx;
 
   // 保留確定タグがない場合はエラー行
-  if (!r.isHoryuu && !r.isJPRHoryuu) {
+  if (!r.isHoryuu && !r.isJPRHoryuu && !r.isBESTHoryuu) {
     row.innerHTML = `
       <div class="cell-orig">
         <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
@@ -1382,8 +1421,8 @@ function addRowHoryuu(idx) {
     return;
   }
 
-  const fname = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu);
-  const horyuuLabel = r.isJPRHoryuu ? 'JPR保留確定' : '保留確定';
+  const fname = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu);
+  const horyuuLabel = r.isJPRHoryuu ? 'JPR保留確定' : (r.isBESTHoryuu ? 'BEST保留確定' : '保留確定');
   let tagClass = 'tag-ok', tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.cal} ${r.date}`;
   if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.warn} 日付なし`; }
 
@@ -1416,10 +1455,10 @@ function addRowHoryuu(idx) {
     pdfRows[idx].name        = nameInput.value.trim();
     pdfRows[idx].date        = dateInput.value.trim() || null;
     pdfRows[idx].isCorrection = corrCheck.checked;
-    const fn = buildFilenameHoryuu(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].isCorrection, pdfRows[idx].isJPRHoryuu);
+    const fn = buildFilenameHoryuu(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].isCorrection, pdfRows[idx].isJPRHoryuu, pdfRows[idx].isBESTHoryuu);
     preview.textContent = fn;
     preview.title = fn;
-    execBtn.disabled = !pdfRows.some(r => (r.isHoryuu || r.isJPRHoryuu) && r.name && r.date);
+    execBtn.disabled = !pdfRows.some(r => (r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu) && r.name && r.date);
   };
 
   nameInput.addEventListener('input', refresh);
@@ -1438,7 +1477,7 @@ function addRowGroup(idx) {
   row.dataset.idx = idx;
 
   // グループタグがない場合エラー表示
-  if (!r.isGroup) {
+  if (!r.isGroup && !r.isBESTGroup) {
     row.innerHTML = `
       <div class="cell-orig">
         <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
@@ -1454,9 +1493,10 @@ function addRowGroup(idx) {
     return;
   }
 
-  const fname = buildFilenameGroup(r.name, r.date, r.period, r.isCorrection);
-  let tagClass = 'tag-ok', tagText = `${ICON.check} グループタグ検出 ${ICON.cal} ${r.date} ${ICON.list} ${r.period}`;
-  if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} グループタグ検出 ${ICON.warn} 日付なし`; }
+  const fname = buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup);
+  const groupLabel = r.isBESTGroup ? 'BESTグループ' : 'グループ';
+  let tagClass = 'tag-ok', tagText = `${ICON.check} ${groupLabel}タグ検出 ${ICON.cal} ${r.date} ${ICON.list} ${r.period}`;
+  if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} ${groupLabel}タグ検出 ${ICON.warn} 日付なし`; }
 
   row.innerHTML = `
     <div class="cell-orig">
@@ -1491,10 +1531,10 @@ function addRowGroup(idx) {
     pdfRows[idx].period      = periodInput.value.trim() || null;
     pdfRows[idx].date        = dateInput.value.trim() || null;
     pdfRows[idx].isCorrection = corrCheck.checked;
-    const fn = buildFilenameGroup(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].period, pdfRows[idx].isCorrection);
+    const fn = buildFilenameGroup(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].period, pdfRows[idx].isCorrection, pdfRows[idx].isBESTGroup);
     preview.textContent = fn;
     preview.title = fn;
-    execBtn.disabled = !pdfRows.some(r => r.isGroup && r.name && r.date);
+    execBtn.disabled = !pdfRows.some(r => (r.isGroup || r.isBESTGroup) && r.name && r.date);
   };
 
   nameInput.addEventListener('input', refresh);
@@ -1512,10 +1552,10 @@ function downloadFile(r) {
   const fn = currentMode === 'final'
     ? buildFilenameFinal(r.name, r.month)
     : currentMode === 'horyuu'
-    ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu)
+    ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu)
     : currentMode === 'group'
-    ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection)
-    : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR);
+    ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup)
+    : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR, r.isBEST);
   const url = URL.createObjectURL(r.file);
   const a = document.createElement('a');
   a.href = url;
@@ -1529,12 +1569,12 @@ function downloadFile(r) {
 // ── リネーム実行 → DLフェーズへ切り替え ──
 execBtn.addEventListener('click', () => {
   const items = currentMode === 'final'
-    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name)
+    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name)
     : currentMode === 'horyuu'
-    ? pdfRows.filter(r => (r.isHoryuu || r.isJPRHoryuu) && r.name && r.date)
+    ? pdfRows.filter(r => (r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu) && r.name && r.date)
     : currentMode === 'group'
-    ? pdfRows.filter(r => r.isGroup && r.name && r.date)
-    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name && r.date);
+    ? pdfRows.filter(r => (r.isGroup || r.isBESTGroup) && r.name && r.date)
+    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name && r.date);
   if (!items.length) return;
   footerRename.style.display = 'none';
   footerDl.style.display = 'flex';
@@ -1552,12 +1592,12 @@ backBtn.addEventListener('click', () => {
 // ── 1件ずつダウンロード ──
 dlOneBtn.addEventListener('click', async () => {
   const items = currentMode === 'final'
-    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name)
+    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name)
     : currentMode === 'horyuu'
-    ? pdfRows.filter(r => (r.isHoryuu || r.isJPRHoryuu) && r.name && r.date)
+    ? pdfRows.filter(r => (r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu) && r.name && r.date)
     : currentMode === 'group'
-    ? pdfRows.filter(r => r.isGroup && r.name && r.date)
-    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name && r.date);
+    ? pdfRows.filter(r => (r.isGroup || r.isBESTGroup) && r.name && r.date)
+    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name && r.date);
   if (!items.length) return;
   dlOneBtn.disabled = true;
   dlZipBtn.disabled = true;
@@ -1576,12 +1616,12 @@ dlOneBtn.addEventListener('click', async () => {
 // ── ZIPにまとめてDL ──
 dlZipBtn.addEventListener('click', async () => {
   const items = currentMode === 'final'
-    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name)
+    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name)
     : currentMode === 'horyuu'
-    ? pdfRows.filter(r => (r.isHoryuu || r.isJPRHoryuu) && r.name && r.date)
+    ? pdfRows.filter(r => (r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu) && r.name && r.date)
     : currentMode === 'group'
-    ? pdfRows.filter(r => r.isGroup && r.name && r.date)
-    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && r.name && r.date);
+    ? pdfRows.filter(r => (r.isGroup || r.isBESTGroup) && r.name && r.date)
+    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name && r.date);
   if (!items.length) return;
   if (!window.JSZip) {
     statusLbl.textContent = 'ZIPライブラリを読み込み中…';
@@ -1596,10 +1636,10 @@ dlZipBtn.addEventListener('click', async () => {
     const fn = currentMode === 'final'
       ? buildFilenameFinal(r.name, r.month)
       : currentMode === 'horyuu'
-      ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu)
+      ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu)
       : currentMode === 'group'
-      ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection)
-      : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR);
+      ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup)
+      : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR, r.isBEST);
     const buf = await r.file.arrayBuffer();
     zip.file(fn, buf);
   }
