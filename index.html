@@ -1052,10 +1052,11 @@ function buildFilenameFinal(name, month) {
 }
 
 // ── ファイル名生成（保留確定） ──
-function buildFilenameHoryuu(name, date, isCorrection, isJPRHoryuu, isBESTHoryuu) {
+function buildFilenameHoryuu(name, date, isCorrection, isJPRHoryuu, isBESTHoryuu, isX) {
   const dateStr = date || '????????';
   const brand = isJPRHoryuu ? 'JPR' : (isBESTHoryuu ? 'BEST' : '');
-  let base = `${brand}保留確定請求書${dateStr}${name}様`;
+  const prefix = isX ? '×' : '';
+  let base = `${prefix}${brand}保留確定請求書${dateStr}${name}様`;
   if (isCorrection) base += ' 訂正分';
   return base + '.pdf';
 }
@@ -1421,10 +1422,12 @@ function addRowHoryuu(idx) {
     return;
   }
 
-  const fname = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu);
+  const fname = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX);
   const horyuuLabel = r.isJPRHoryuu ? 'JPR保留確定' : (r.isBESTHoryuu ? 'BEST保留確定' : '保留確定');
   let tagClass = 'tag-ok', tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.cal} ${r.date}`;
   if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.warn} 日付なし`; }
+
+  const prevClass = r.isX ? 'is-x' : '';
 
   row.innerHTML = `
     <div class="cell-orig">
@@ -1441,11 +1444,12 @@ function addRowHoryuu(idx) {
         <span>訂正分</span>
       </label>
     </div>
-    <div class="cell-preview" title="${fname}">${fname}</div>
+    <div class="cell-preview ${prevClass}" title="${fname}">${fname}</div>
     <div><button class="del-btn" title="削除">✕</button></div>
   `;
 
   const nameInput  = row.querySelector('.name-input');
+  const amtInput   = row.querySelector('.amt-input');
   const dateInput  = row.querySelector('.date-input');
   const corrCheck  = row.querySelector('.corr-check');
   const preview    = row.querySelector('.cell-preview');
@@ -1453,15 +1457,19 @@ function addRowHoryuu(idx) {
 
   const refresh = () => {
     pdfRows[idx].name        = nameInput.value.trim();
+    pdfRows[idx].amount      = amtInput.value !== '' ? parseInt(amtInput.value) : -1;
     pdfRows[idx].date        = dateInput.value.trim() || null;
     pdfRows[idx].isCorrection = corrCheck.checked;
-    const fn = buildFilenameHoryuu(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].isCorrection, pdfRows[idx].isJPRHoryuu, pdfRows[idx].isBESTHoryuu);
+    pdfRows[idx].isX          = pdfRows[idx].amount === 0;
+    const fn = buildFilenameHoryuu(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].isCorrection, pdfRows[idx].isJPRHoryuu, pdfRows[idx].isBESTHoryuu, pdfRows[idx].isX);
     preview.textContent = fn;
+    preview.className = 'cell-preview' + (pdfRows[idx].isX ? ' is-x' : '');
     preview.title = fn;
     execBtn.disabled = !pdfRows.some(r => (r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu) && r.name && r.date);
   };
 
   nameInput.addEventListener('input', refresh);
+  amtInput.addEventListener('input', refresh);
   dateInput.addEventListener('input', refresh);
   corrCheck.addEventListener('change', refresh);
   delBtn.addEventListener('click', () => { pdfRows.splice(idx, 1); renderRows(); });
@@ -1552,7 +1560,7 @@ function downloadFile(r) {
   const fn = currentMode === 'final'
     ? buildFilenameFinal(r.name, r.month)
     : currentMode === 'horyuu'
-    ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu)
+    ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX)
     : currentMode === 'group'
     ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup)
     : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR, r.isBEST);
@@ -1636,7 +1644,7 @@ dlZipBtn.addEventListener('click', async () => {
     const fn = currentMode === 'final'
       ? buildFilenameFinal(r.name, r.month)
       : currentMode === 'horyuu'
-      ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu)
+      ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX)
       : currentMode === 'group'
       ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup)
       : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR, r.isBEST);
