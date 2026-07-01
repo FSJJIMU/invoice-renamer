@@ -1062,11 +1062,12 @@ function buildFilenameHoryuu(name, date, isCorrection, isJPRHoryuu, isBESTHoryuu
 }
 
 // ── ファイル名生成（グループ用請求） ──
-function buildFilenameGroup(name, date, period, isCorrection, isBESTGroup) {
+function buildFilenameGroup(name, date, period, isCorrection, isBESTGroup, isX) {
   const dateStr   = date   || '????????';
   const periodStr = period || '??-??';
   const brand = isBESTGroup ? 'BEST' : '';
-  let base = `${brand}${name}様 請求書 ${periodStr}稼働分 ${dateStr}`;
+  const prefix = isX ? '×' : '';
+  let base = `${prefix}${brand}${name}様 請求書 ${periodStr}稼働分 ${dateStr}`;
   if (isCorrection) base += ' 訂正分';
   return base + '.pdf';
 }
@@ -1501,10 +1502,12 @@ function addRowGroup(idx) {
     return;
   }
 
-  const fname = buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup);
+  const fname = buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX);
   const groupLabel = r.isBESTGroup ? 'BESTグループ' : 'グループ';
   let tagClass = 'tag-ok', tagText = `${ICON.check} ${groupLabel}タグ検出 ${ICON.cal} ${r.date} ${ICON.list} ${r.period}`;
   if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} ${groupLabel}タグ検出 ${ICON.warn} 日付なし`; }
+
+  const prevClass = r.isX ? 'is-x' : '';
 
   row.innerHTML = `
     <div class="cell-orig">
@@ -1521,7 +1524,7 @@ function addRowGroup(idx) {
         <span>訂正分</span>
       </label>
     </div>
-    <div class="cell-preview" title="${fname}">${fname}</div>
+    <div class="cell-preview ${prevClass}" title="${fname}">${fname}</div>
     <div><button class="del-btn" title="削除">✕</button></div>
   `;
 
@@ -1539,8 +1542,10 @@ function addRowGroup(idx) {
     pdfRows[idx].period      = periodInput.value.trim() || null;
     pdfRows[idx].date        = dateInput.value.trim() || null;
     pdfRows[idx].isCorrection = corrCheck.checked;
-    const fn = buildFilenameGroup(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].period, pdfRows[idx].isCorrection, pdfRows[idx].isBESTGroup);
+    pdfRows[idx].isX          = pdfRows[idx].amount === 0;
+    const fn = buildFilenameGroup(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].period, pdfRows[idx].isCorrection, pdfRows[idx].isBESTGroup, pdfRows[idx].isX);
     preview.textContent = fn;
+    preview.className = 'cell-preview' + (pdfRows[idx].isX ? ' is-x' : '');
     preview.title = fn;
     execBtn.disabled = !pdfRows.some(r => (r.isGroup || r.isBESTGroup) && r.name && r.date);
   };
@@ -1562,7 +1567,7 @@ function downloadFile(r) {
     : currentMode === 'horyuu'
     ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX)
     : currentMode === 'group'
-    ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup)
+    ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX)
     : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR, r.isBEST);
   const url = URL.createObjectURL(r.file);
   const a = document.createElement('a');
@@ -1646,7 +1651,7 @@ dlZipBtn.addEventListener('click', async () => {
       : currentMode === 'horyuu'
       ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX)
       : currentMode === 'group'
-      ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup)
+      ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX)
       : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR, r.isBEST);
     const buf = await r.file.arrayBuffer();
     zip.file(fn, buf);
