@@ -1052,12 +1052,13 @@ function buildFilenameFinal(name, month) {
 }
 
 // ── ファイル名生成（保留確定） ──
-function buildFilenameHoryuu(name, date, isCorrection, isJPRHoryuu, isBESTHoryuu, isX) {
+function buildFilenameHoryuu(name, date, isCorrection, isJPRHoryuu, isBESTHoryuu, isX, dupPrefix) {
   const dateStr = date || '????????';
   const brand = isJPRHoryuu ? 'JPR' : (isBESTHoryuu ? 'BEST' : '');
   const prefix = isX ? '×' : '';
   let base = `${prefix}${brand}保留確定請求書${dateStr}${name}様`;
   if (isCorrection) base += ' 訂正分';
+  if (dupPrefix) base = dupPrefix + ' ' + base;
   return base + '.pdf';
 }
 
@@ -1083,6 +1084,30 @@ function detectDuplicates(rows) {
   let dupTotal = 0;
   rows.forEach(r => {
     const key = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '', r.isJPR, r.isBEST);
+    if (nameCount[key] > 1) {
+      tracker[key] = (tracker[key] || 0) + 1;
+      r.dupPrefix = tracker[key] === 1 ? '' : `※重複データ${tracker[key] - 1}`;
+      if (tracker[key] > 1) dupTotal++;
+    } else {
+      r.dupPrefix = '';
+    }
+  });
+  return dupTotal;
+}
+
+// ── 重複検出（保留確定） ──
+function detectDuplicatesHoryuu(rows) {
+  const nameCount = {};
+  rows.forEach(r => {
+    if (!r.isHoryuu && !r.isJPRHoryuu && !r.isBESTHoryuu) { r.dupPrefix = ''; return; }
+    const key = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, '');
+    nameCount[key] = (nameCount[key] || 0) + 1;
+  });
+  const tracker = {};
+  let dupTotal = 0;
+  rows.forEach(r => {
+    if (!r.isHoryuu && !r.isJPRHoryuu && !r.isBESTHoryuu) { r.dupPrefix = ''; return; }
+    const key = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, '');
     if (nameCount[key] > 1) {
       tracker[key] = (tracker[key] || 0) + 1;
       r.dupPrefix = tracker[key] === 1 ? '' : `※重複データ${tracker[key] - 1}`;
@@ -1171,9 +1196,10 @@ function renderRows() {
     execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name);
     dupLbl.textContent = '';
   } else if (currentMode === 'horyuu') {
+    const dupTotal = detectDuplicatesHoryuu(pdfRows);
+    dupLbl.innerHTML = dupTotal > 0 ? `${ICON.warn} 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
     pdfRows.forEach((r, idx) => addRowHoryuu(idx));
     execBtn.disabled = !pdfRows.some(r => (r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu) && r.name && r.date);
-    dupLbl.textContent = '';
   } else if (currentMode === 'group') {
     pdfRows.forEach((r, idx) => addRowGroup(idx));
     execBtn.disabled = !pdfRows.some(r => (r.isGroup || r.isBESTGroup) && r.name && r.date);
@@ -1423,12 +1449,12 @@ function addRowHoryuu(idx) {
     return;
   }
 
-  const fname = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX);
+  const fname = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, r.dupPrefix);
   const horyuuLabel = r.isJPRHoryuu ? 'JPR保留確定' : (r.isBESTHoryuu ? 'BEST保留確定' : '保留確定');
   let tagClass = 'tag-ok', tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.cal} ${r.date}`;
   if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.warn} 日付なし`; }
 
-  const prevClass = r.isX ? 'is-x' : '';
+  const prevClass = (r.isX || r.dupPrefix) ? 'is-x' : '';
 
   row.innerHTML = `
     <div class="cell-orig">
@@ -1462,9 +1488,11 @@ function addRowHoryuu(idx) {
     pdfRows[idx].date        = dateInput.value.trim() || null;
     pdfRows[idx].isCorrection = corrCheck.checked;
     pdfRows[idx].isX          = pdfRows[idx].amount === 0;
-    const fn = buildFilenameHoryuu(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].isCorrection, pdfRows[idx].isJPRHoryuu, pdfRows[idx].isBESTHoryuu, pdfRows[idx].isX);
+    const dupTotal = detectDuplicatesHoryuu(pdfRows);
+    dupLbl.innerHTML = dupTotal > 0 ? `${ICON.warn} 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
+    const fn = buildFilenameHoryuu(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].isCorrection, pdfRows[idx].isJPRHoryuu, pdfRows[idx].isBESTHoryuu, pdfRows[idx].isX, pdfRows[idx].dupPrefix);
     preview.textContent = fn;
-    preview.className = 'cell-preview' + (pdfRows[idx].isX ? ' is-x' : '');
+    preview.className = 'cell-preview' + ((pdfRows[idx].isX || pdfRows[idx].dupPrefix) ? ' is-x' : '');
     preview.title = fn;
     execBtn.disabled = !pdfRows.some(r => (r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu) && r.name && r.date);
   };
@@ -1565,7 +1593,7 @@ function downloadFile(r) {
   const fn = currentMode === 'final'
     ? buildFilenameFinal(r.name, r.month)
     : currentMode === 'horyuu'
-    ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX)
+    ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, r.dupPrefix)
     : currentMode === 'group'
     ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX)
     : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR, r.isBEST);
@@ -1649,7 +1677,7 @@ dlZipBtn.addEventListener('click', async () => {
     const fn = currentMode === 'final'
       ? buildFilenameFinal(r.name, r.month)
       : currentMode === 'horyuu'
-      ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX)
+      ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, r.dupPrefix)
       : currentMode === 'group'
       ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX)
       : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR, r.isBEST);
