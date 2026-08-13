@@ -1052,13 +1052,13 @@ function buildFilenameFinal(name, month) {
 }
 
 // ── ファイル名生成（保留確定） ──
-function buildFilenameHoryuu(name, date, isCorrection, isJPRHoryuu, isBESTHoryuu, isX, dupPrefix) {
+function buildFilenameHoryuu(name, date, isCorrection, isJPRHoryuu, isBESTHoryuu, isX, dupSuffix) {
   const dateStr = date || '????????';
   const brand = isJPRHoryuu ? 'JPR' : (isBESTHoryuu ? 'BEST' : '');
   const prefix = isX ? '×' : '';
   let base = `${prefix}${brand}保留確定請求書${dateStr}${name}様`;
   if (isCorrection) base += ' 訂正分';
-  if (dupPrefix) base = dupPrefix + ' ' + base;
+  if (dupSuffix) base += ` ${dupSuffix}`;
   return base + '.pdf';
 }
 
@@ -1110,7 +1110,8 @@ function detectDuplicatesHoryuu(rows) {
     const key = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, '');
     if (nameCount[key] > 1) {
       tracker[key] = (tracker[key] || 0) + 1;
-      r.dupPrefix = tracker[key] === 1 ? '' : `※重複データ${tracker[key] - 1}`;
+      // 重複がある場合は1件目から 1, 2, 3... を末尾に付与
+      r.dupPrefix = String(tracker[key]);
       if (tracker[key] > 1) dupTotal++;
     } else {
       r.dupPrefix = '';
