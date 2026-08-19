@@ -926,7 +926,7 @@ function parseTag(rawText) {
     name, amount: parseInt(amount), date, period,
     staff: staff || null, found: true,
     isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false,
-    isBEST: false, isBESTHoryuu: false, isBESTGroup: false,
+    isBEST: false, isBESTHoryuu: false, isBESTGroup: false, isJPRGroup: false,
     ...flags, raw
   });
   const fix7 = d => d.slice(0,4) + '0' + d.slice(4);
@@ -938,6 +938,12 @@ function parseTag(rawText) {
   if (m) return base(m[1], m[2], m[3], m[4], { isBESTGroup: true }, m[5]);
   m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{7}):BESTグループ:([^:#]+)' + T + '##', 'i'));
   if (m) return base(m[1], m[2], fix7(m[3]), m[4], { isBESTGroup: true }, m[5]);
+
+  // JPRグループ
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{8}):JPRグループ:([^:#]+)' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], m[3], m[4], { isJPRGroup: true }, m[5]);
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{7}):JPRグループ:([^:#]+)' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], fix7(m[3]), m[4], { isJPRGroup: true }, m[5]);
 
   // BEST保留確定
   m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{8}):BEST保留確定' + T + '##', 'i'));
@@ -987,7 +993,7 @@ function parseTag(rawText) {
 
   return { name: '', amount: -1, date: null, period: null, staff: null, found: false,
     isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false,
-    isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
+    isBEST: false, isBESTHoryuu: false, isBESTGroup: false, isJPRGroup: false, raw };
 }
 
 // ── PDF テキスト抽出 ──
@@ -1048,10 +1054,10 @@ function buildFilenameHoryuu(name, date, isCorrection, isJPRHoryuu, isBESTHoryuu
 }
 
 // ── ファイル名生成（グループ用請求） ──
-function buildFilenameGroup(name, date, period, isCorrection, isBESTGroup, isX, dupSuffix) {
+function buildFilenameGroup(name, date, period, isCorrection, isBESTGroup, isX, dupSuffix, isJPRGroup) {
   const dateStr   = date   || '????????';
   const periodStr = period || '??-??';
-  const brand = isBESTGroup ? 'BEST' : '';
+  const brand = isBESTGroup ? 'BEST ' : (isJPRGroup ? 'JPR ' : '');
   const prefix = isX ? '×' : '';
   let base = `${prefix}${brand}${name}様 請求書 ${periodStr}稼働分 ${dateStr}`;
   if (isCorrection) base += ' 訂正分';
@@ -1143,7 +1149,7 @@ function refreshAllPreviews() {
     } else if (currentMode === 'horyuu') {
       fn = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, r.dupPrefix);
     } else if (currentMode === 'group') {
-      fn = buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX, r.dupPrefix);
+      fn = buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX, r.dupPrefix, r.isJPRGroup);
     } else {
       fn = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR, r.isBEST);
     }
@@ -1176,8 +1182,8 @@ function detectDuplicatesHoryuu(rows) {
 function detectDuplicatesGroup(rows) {
   return resolveDuplicates(
     rows,
-    r => `${r.name}|${r.date}|${r.period}|${r.isBESTGroup ? 'B' : ''}|${r.isCorrection ? 'C' : ''}`,
-    r => r.isGroup || r.isBESTGroup
+    r => `${r.name}|${r.date}|${r.period}|${r.isBESTGroup ? 'B' : ''}${r.isJPRGroup ? 'J' : ''}|${r.isCorrection ? 'C' : ''}`,
+    r => r.isGroup || r.isBESTGroup || r.isJPRGroup
   );
 }
 
@@ -1221,6 +1227,7 @@ async function processFiles(files) {
       isBEST: p.isBEST,
       isBESTHoryuu: p.isBESTHoryuu,
       isBESTGroup: p.isBESTGroup,
+      isJPRGroup: p.isJPRGroup,
       found: p.found,
       raw: p.raw,
       dupPrefix: ''
@@ -1256,7 +1263,7 @@ function renderRows() {
 
   if (currentMode === 'final') {
     pdfRows.forEach((r, idx) => addRowFinal(idx));
-    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name);
+    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && !r.isJPRGroup && r.name);
     dupLbl.textContent = '';
   } else if (currentMode === 'horyuu') {
     const dupTotal = detectDuplicatesHoryuu(pdfRows);
@@ -1267,13 +1274,13 @@ function renderRows() {
     const dupTotal = detectDuplicatesGroup(pdfRows);
     dupLbl.innerHTML = dupTotal > 0 ? `${ICON.warn} 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
     pdfRows.forEach((r, idx) => addRowGroup(idx));
-    execBtn.disabled = !pdfRows.some(r => (r.isGroup || r.isBESTGroup) && r.name && r.date);
+    execBtn.disabled = !pdfRows.some(r => (r.isGroup || r.isBESTGroup || r.isJPRGroup) && r.name && r.date);
   } else {
     // 日払いモード
     const dupTotal = detectDuplicates(pdfRows);
     dupLbl.innerHTML = dupTotal > 0 ? `${ICON.warn} 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
     pdfRows.forEach((r, idx) => addRow(idx));
-    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name && r.date);
+    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && !r.isJPRGroup && r.name && r.date);
   }
 }
 
@@ -1303,8 +1310,8 @@ function addRow(idx) {
   }
 
   // グループタグが含まれている場合はエラー表示
-  if (r.isGroup || r.isBESTGroup) {
-    const label = r.isBESTGroup ? 'BESTグループ用' : 'グループ用';
+  if (r.isGroup || r.isBESTGroup || r.isJPRGroup) {
+    const label = r.isBESTGroup ? 'BESTグループ用' : (r.isJPRGroup ? 'JPRグループ用' : 'グループ用');
     row.innerHTML = `
       <div class="cell-orig">
         <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
@@ -1381,7 +1388,7 @@ function addRow(idx) {
     const dupTotal = detectDuplicates(pdfRows);
     refreshAllPreviews();
 
-    const ready = pdfRows.some(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name && r.date);
+    const ready = pdfRows.some(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && !r.isJPRGroup && r.name && r.date);
     execBtn.disabled = !ready;
 
     dupLbl.innerHTML = dupTotal > 0 ? `${ICON.warn} 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
@@ -1416,16 +1423,18 @@ function addRowFinal(idx) {
   row.dataset.idx = idx;
 
   // 保留確定・グループ・JPR/BEST関連タグが含まれている場合はエラー表示
-  if (r.isHoryuu || r.isGroup || r.isJPRHoryuu || r.isBESTHoryuu || r.isBESTGroup) {
+  if (r.isHoryuu || r.isGroup || r.isJPRHoryuu || r.isBESTHoryuu || r.isBESTGroup || r.isJPRGroup) {
     const label = r.isHoryuu ? '保留確定請求書'
       : r.isGroup ? 'グループ用請求書'
       : r.isJPRHoryuu ? 'JPR保留確定請求書'
       : r.isBESTHoryuu ? 'BEST保留確定請求書'
+      : r.isJPRGroup ? 'JPRグループ用請求書'
       : 'BESTグループ用請求書';
     const tagLabel = r.isHoryuu ? '保留確定'
       : r.isGroup ? 'グループ'
       : r.isJPRHoryuu ? 'JPR保留確定'
       : r.isBESTHoryuu ? 'BEST保留確定'
+      : r.isJPRGroup ? 'JPRグループ'
       : 'BESTグループ';
     row.innerHTML = `
       <div class="cell-orig">
@@ -1472,7 +1481,7 @@ function addRowFinal(idx) {
     pdfRows[idx].name  = nameInput.value.trim();
     pdfRows[idx].month = monthInput.value ? parseInt(monthInput.value, 10) : null;
     refreshAllPreviews();
-    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name);
+    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && !r.isJPRGroup && r.name);
   };
 
   nameInput.addEventListener('input', refresh);
@@ -1570,7 +1579,7 @@ function addRowGroup(idx) {
   row.dataset.idx = idx;
 
   // グループタグがない場合エラー表示
-  if (!r.isGroup && !r.isBESTGroup) {
+  if (!r.isGroup && !r.isBESTGroup && !r.isJPRGroup) {
     row.innerHTML = `
       <div class="cell-orig">
         <div class="fname" title="${r.orig}">${r.orig.length > 22 ? r.orig.slice(0,22)+'…' : r.orig}</div>
@@ -1586,8 +1595,8 @@ function addRowGroup(idx) {
     return;
   }
 
-  const fname = buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX, r.dupPrefix);
-  const groupLabel = r.isBESTGroup ? 'BESTグループ' : 'グループ';
+  const fname = buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX, r.dupPrefix, r.isJPRGroup);
+  const groupLabel = r.isBESTGroup ? 'BESTグループ' : (r.isJPRGroup ? 'JPRグループ' : 'グループ');
   let tagClass = 'tag-ok', tagText = `${ICON.check} ${groupLabel}タグ検出 ${ICON.cal} ${r.date} ${ICON.list} ${r.period}`;
   if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} ${groupLabel}タグ検出 ${ICON.warn} 日付なし`; }
 
@@ -1630,7 +1639,7 @@ function addRowGroup(idx) {
     const dupTotal = detectDuplicatesGroup(pdfRows);
     dupLbl.innerHTML = dupTotal > 0 ? `${ICON.warn} 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
     refreshAllPreviews();
-    execBtn.disabled = !pdfRows.some(r => (r.isGroup || r.isBESTGroup) && r.name && r.date);
+    execBtn.disabled = !pdfRows.some(r => (r.isGroup || r.isBESTGroup || r.isJPRGroup) && r.name && r.date);
   };
 
   nameInput.addEventListener('input', refresh);
@@ -1650,7 +1659,7 @@ function downloadFile(r) {
     : currentMode === 'horyuu'
     ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, r.dupPrefix)
     : currentMode === 'group'
-    ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX, r.dupPrefix)
+    ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX, r.dupPrefix, r.isJPRGroup)
     : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR, r.isBEST);
   const url = URL.createObjectURL(r.file);
   const a = document.createElement('a');
@@ -1665,12 +1674,12 @@ function downloadFile(r) {
 // ── リネーム実行 → DLフェーズへ切り替え ──
 execBtn.addEventListener('click', () => {
   const items = currentMode === 'final'
-    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name)
+    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && !r.isJPRGroup && r.name)
     : currentMode === 'horyuu'
     ? pdfRows.filter(r => (r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu) && r.name && r.date)
     : currentMode === 'group'
-    ? pdfRows.filter(r => (r.isGroup || r.isBESTGroup) && r.name && r.date)
-    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name && r.date);
+    ? pdfRows.filter(r => (r.isGroup || r.isBESTGroup || r.isJPRGroup) && r.name && r.date)
+    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && !r.isJPRGroup && r.name && r.date);
   if (!items.length) return;
   footerRename.style.display = 'none';
   footerDl.style.display = 'flex';
@@ -1688,12 +1697,12 @@ backBtn.addEventListener('click', () => {
 // ── 1件ずつダウンロード ──
 dlOneBtn.addEventListener('click', async () => {
   const items = currentMode === 'final'
-    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name)
+    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && !r.isJPRGroup && r.name)
     : currentMode === 'horyuu'
     ? pdfRows.filter(r => (r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu) && r.name && r.date)
     : currentMode === 'group'
-    ? pdfRows.filter(r => (r.isGroup || r.isBESTGroup) && r.name && r.date)
-    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name && r.date);
+    ? pdfRows.filter(r => (r.isGroup || r.isBESTGroup || r.isJPRGroup) && r.name && r.date)
+    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && !r.isJPRGroup && r.name && r.date);
   if (!items.length) return;
   dlOneBtn.disabled = true;
   dlZipBtn.disabled = true;
@@ -1712,12 +1721,12 @@ dlOneBtn.addEventListener('click', async () => {
 // ── ZIPにまとめてDL ──
 dlZipBtn.addEventListener('click', async () => {
   const items = currentMode === 'final'
-    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name)
+    ? pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && !r.isJPRGroup && r.name)
     : currentMode === 'horyuu'
     ? pdfRows.filter(r => (r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu) && r.name && r.date)
     : currentMode === 'group'
-    ? pdfRows.filter(r => (r.isGroup || r.isBESTGroup) && r.name && r.date)
-    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name && r.date);
+    ? pdfRows.filter(r => (r.isGroup || r.isBESTGroup || r.isJPRGroup) && r.name && r.date)
+    : pdfRows.filter(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && !r.isJPRGroup && r.name && r.date);
   if (!items.length) return;
   if (!window.JSZip) {
     statusLbl.textContent = 'ZIPライブラリを読み込み中…';
@@ -1734,7 +1743,7 @@ dlZipBtn.addEventListener('click', async () => {
       : currentMode === 'horyuu'
       ? buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, r.dupPrefix)
       : currentMode === 'group'
-      ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX, r.dupPrefix)
+      ? buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX, r.dupPrefix, r.isJPRGroup)
       : buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR, r.isBEST);
     const buf = await r.file.arrayBuffer();
     zip.file(fn, buf);
