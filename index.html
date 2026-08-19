@@ -813,6 +813,9 @@ function switchMode(mode) {
   statusLbl.textContent = '';
   footerDl.style.display = 'none';
   footerRename.style.display = 'flex';
+  // 一括入力欄をクリア
+  if (bulkMonthInput) bulkMonthInput.value = '';
+  if (bulkDateInput)  { bulkDateInput.value = ''; bulkDateInput.style.borderColor = ''; }
   const tag = modeTags[mode] || mode.toUpperCase();
   const wsTag = document.getElementById('ws-mode-tag');
   if (wsTag) wsTag.textContent = tag;
@@ -860,14 +863,7 @@ bulkMonthBtn.addEventListener('click', () => {
   if (!m || m < 1 || m > 12) return;
   pdfRows.forEach(r => { r.month = m; });
   rowsContainer.querySelectorAll('.month-input').forEach(input => { input.value = m; });
-  rowsContainer.querySelectorAll('.pdf-row-final').forEach((row, idx) => {
-    const preview = row.querySelector('.cell-preview');
-    if (preview) {
-      const fn = buildFilenameFinal(pdfRows[idx].name, m);
-      preview.textContent = fn;
-      preview.title = fn;
-    }
-  });
+  refreshAllPreviews();
 });
 
 // ── 一括日付カレンダー ──
@@ -890,15 +886,7 @@ bulkDateBtn.addEventListener('click', () => {
   }
   bulkDateInput.style.borderColor = '';
   bulkIssueDate = d;
-  // 全行のプレビューを更新
-  rowsContainer.querySelectorAll('.pdf-row-final').forEach((row, idx) => {
-    const preview = row.querySelector('.cell-preview');
-    if (preview) {
-      const fn = buildFilenameFinal(pdfRows[idx].name, pdfRows[idx].month);
-      preview.textContent = fn;
-      preview.title = fn;
-    }
-  });
+  refreshAllPreviews();
 });
 
 // ── Drag & Drop ──
@@ -1139,6 +1127,32 @@ function resolveDuplicates(rows, groupKeyFn, targetFn) {
   return dupTotal;
 }
 
+// ── 全行のプレビューを再描画（重複番号の変化を反映） ──
+function refreshAllPreviews() {
+  const rowEls = rowsContainer.querySelectorAll('.pdf-row, .pdf-row-final');
+  rowEls.forEach(el => {
+    const i = parseInt(el.dataset.idx, 10);
+    const r = pdfRows[i];
+    if (!r) return;
+    const pv = el.querySelector('.cell-preview');
+    if (!pv) return;
+
+    let fn;
+    if (currentMode === 'final') {
+      fn = buildFilenameFinal(r.name, r.month);
+    } else if (currentMode === 'horyuu') {
+      fn = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, r.dupPrefix);
+    } else if (currentMode === 'group') {
+      fn = buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX, r.dupPrefix);
+    } else {
+      fn = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, r.dupPrefix, r.isJPR, r.isBEST);
+    }
+    pv.textContent = fn;
+    pv.title = fn;
+    pv.className = 'cell-preview' + ((r.isX || r.dupPrefix) ? ' is-x' : '');
+  });
+}
+
 // ── 重複検出（日払い） ──
 function detectDuplicates(rows) {
   return resolveDuplicates(
@@ -1364,14 +1378,9 @@ function addRow(idx) {
     if (amt === 0 && !isX) { pdfRows[idx].isX = true; }
 
     const dupTotal = detectDuplicates(pdfRows);
-    const fn = buildFilename(pdfRows[idx].name, pdfRows[idx].amount, pdfRows[idx].date,
-                              pdfRows[idx].isX, pdfRows[idx].isCorrection, pdfRows[idx].dupPrefix,
-                              pdfRows[idx].isJPR, pdfRows[idx].isBEST);
-    preview.textContent = fn;
-    preview.title = fn;
-    preview.className = 'cell-preview' + ((pdfRows[idx].isX || pdfRows[idx].dupPrefix) ? ' is-x' : '');
+    refreshAllPreviews();
 
-    const ready = pdfRows.some(r => r.name && r.date);
+    const ready = pdfRows.some(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name && r.date);
     execBtn.disabled = !ready;
 
     dupLbl.innerHTML = dupTotal > 0 ? `${ICON.warn} 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
@@ -1461,10 +1470,8 @@ function addRowFinal(idx) {
   const refresh = () => {
     pdfRows[idx].name  = nameInput.value.trim();
     pdfRows[idx].month = monthInput.value ? parseInt(monthInput.value, 10) : null;
-    const fn = buildFilenameFinal(pdfRows[idx].name, pdfRows[idx].month);
-    preview.textContent = fn;
-    preview.title = fn;
-    execBtn.disabled = !pdfRows.some(r => r.name);
+    refreshAllPreviews();
+    execBtn.disabled = !pdfRows.some(r => !r.isHoryuu && !r.isGroup && !r.isJPRHoryuu && !r.isBESTHoryuu && !r.isBESTGroup && r.name);
   };
 
   nameInput.addEventListener('input', refresh);
@@ -1541,10 +1548,7 @@ function addRowHoryuu(idx) {
     pdfRows[idx].isX          = pdfRows[idx].amount === 0;
     const dupTotal = detectDuplicatesHoryuu(pdfRows);
     dupLbl.innerHTML = dupTotal > 0 ? `${ICON.warn} 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
-    const fn = buildFilenameHoryuu(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].isCorrection, pdfRows[idx].isJPRHoryuu, pdfRows[idx].isBESTHoryuu, pdfRows[idx].isX, pdfRows[idx].dupPrefix);
-    preview.textContent = fn;
-    preview.className = 'cell-preview' + ((pdfRows[idx].isX || pdfRows[idx].dupPrefix) ? ' is-x' : '');
-    preview.title = fn;
+    refreshAllPreviews();
     execBtn.disabled = !pdfRows.some(r => (r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu) && r.name && r.date);
   };
 
@@ -1624,10 +1628,7 @@ function addRowGroup(idx) {
     pdfRows[idx].isX          = pdfRows[idx].amount === 0;
     const dupTotal = detectDuplicatesGroup(pdfRows);
     dupLbl.innerHTML = dupTotal > 0 ? `${ICON.warn} 重複データが ${dupTotal} 件あります。ご確認ください。` : '';
-    const fn = buildFilenameGroup(pdfRows[idx].name, pdfRows[idx].date, pdfRows[idx].period, pdfRows[idx].isCorrection, pdfRows[idx].isBESTGroup, pdfRows[idx].isX, pdfRows[idx].dupPrefix);
-    preview.textContent = fn;
-    preview.className = 'cell-preview' + ((pdfRows[idx].isX || pdfRows[idx].dupPrefix) ? ' is-x' : '');
-    preview.title = fn;
+    refreshAllPreviews();
     execBtn.disabled = !pdfRows.some(r => (r.isGroup || r.isBESTGroup) && r.name && r.date);
   };
 
