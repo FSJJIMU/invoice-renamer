@@ -1072,18 +1072,17 @@ function buildFilenameGroup(name, date, period, isCorrection, isBESTGroup, isX, 
 }
 
 // ── 重複解決（共通） ──
-// baseKeyFn: 連番/重複マーク無しの素のファイル名を返す関数
+// groupKeyFn: 「同じ相手・同じ日付か」を判定するキー（×有無や金額は無視）
 // 判定ルール:
-//   素のファイル名が同じ行をグループ化し、その中で
-//     - 担当者名が全て異なる       → 連番（1, 2, 3…）＝ 別人の正常データ
-//     - 担当者名が同じ行がある      → ※重複データN ＝ 誤出力の可能性あり
-//     - 担当者名が不明（旧タグ）    → ※重複データN（安全側に倒す）
-function resolveDuplicates(rows, baseKeyFn, targetFn) {
+//   同じ名義＋日付の行が2件以上あれば全件に連番（1, 2, 3…）を付与。
+//   そのうち担当者名が同じ行同士は ※重複データN を付けて要確認を促す。
+//   担当者名が不明（旧タグ）の場合は安全側に倒して ※重複データN 扱い。
+function resolveDuplicates(rows, groupKeyFn, targetFn) {
   const groups = {};
   rows.forEach(r => {
-    r.dupPrefix   = '';
+    r.dupPrefix = '';
     if (targetFn && !targetFn(r)) return;
-    const k = baseKeyFn(r);
+    const k = groupKeyFn(r);
     (groups[k] = groups[k] || []).push(r);
   });
 
@@ -1092,7 +1091,7 @@ function resolveDuplicates(rows, baseKeyFn, targetFn) {
   Object.values(groups).forEach(g => {
     if (g.length === 1) return;
 
-    // 担当者名ごとにサブグループ化（旧タグ = 担当者不明は個別扱いにしない）
+    // 担当者名ごとにサブグループ化
     const byStaff = {};
     let hasUnknown = false;
     g.forEach(r => {
@@ -1101,40 +1100,21 @@ function resolveDuplicates(rows, baseKeyFn, targetFn) {
       (byStaff[s] = byStaff[s] || []).push(r);
     });
 
-    // 担当者不明が混ざっている場合は全件 ※重複データ 扱い（安全側）
+    // 担当者不明が混ざる場合は全件 ※重複データ 扱い（安全側）
     if (hasUnknown) {
       g.forEach((r, i) => {
-        r.dupPrefix = i === 0 ? '' : `※重複データ${i}`;
+        r.dupPrefix = i === 0 ? '1' : `${i + 1} ※重複データ${i}`;
         if (i > 0) dupTotal++;
       });
       return;
     }
 
-    // 担当者が全員異なる → 連番（別人の正常データ）
-    const staffKeys = Object.keys(byStaff);
-    const allUnique = staffKeys.every(s => byStaff[s].length === 1);
-    if (allUnique) {
-      g.forEach((r, i) => { r.dupPrefix = String(i + 1); });
-      return;
-    }
-
-    // 同一担当者が複数いる場合
-    // 担当者が1人だけ（全部同じ人）なら連番を振らず ※重複データ のみ
-    if (staffKeys.length === 1) {
-      byStaff[staffKeys[0]].forEach((r, i) => {
-        r.dupPrefix = i === 0 ? '' : `※重複データ${i}`;
-        if (i > 0) dupTotal++;
-      });
-      return;
-    }
-
-    // 複数の担当者がいて、一部に重複がある → 担当者ごとに連番、重複分は ※重複データ
+    // 全件に通し番号を振りつつ、同一担当者の2件目以降に ※重複データ を付与
     let seq = 0;
-    staffKeys.forEach(s => {
-      const list = byStaff[s];
-      seq++;
-      list.forEach((r, i) => {
-        r.dupPrefix = i === 0 ? String(seq) : `※重複データ${i}`;
+    Object.keys(byStaff).forEach(s => {
+      byStaff[s].forEach((r, i) => {
+        seq++;
+        r.dupPrefix = i === 0 ? String(seq) : `${seq} ※重複データ${i}`;
         if (i > 0) dupTotal++;
       });
     });
@@ -1147,7 +1127,7 @@ function resolveDuplicates(rows, baseKeyFn, targetFn) {
 function detectDuplicates(rows) {
   return resolveDuplicates(
     rows,
-    r => buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '', r.isJPR, r.isBEST),
+    r => `${r.name}|${r.date}|${r.isJPR ? 'J' : ''}${r.isBEST ? 'B' : ''}|${r.isCorrection ? 'C' : ''}`,
     null
   );
 }
@@ -1156,7 +1136,7 @@ function detectDuplicates(rows) {
 function detectDuplicatesHoryuu(rows) {
   return resolveDuplicates(
     rows,
-    r => buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, ''),
+    r => `${r.name}|${r.date}|${r.isJPRHoryuu ? 'J' : ''}${r.isBESTHoryuu ? 'B' : ''}|${r.isCorrection ? 'C' : ''}`,
     r => r.isHoryuu || r.isJPRHoryuu || r.isBESTHoryuu
   );
 }
@@ -1165,7 +1145,7 @@ function detectDuplicatesHoryuu(rows) {
 function detectDuplicatesGroup(rows) {
   return resolveDuplicates(
     rows,
-    r => buildFilenameGroup(r.name, r.date, r.period, r.isCorrection, r.isBESTGroup, r.isX, ''),
+    r => `${r.name}|${r.date}|${r.period}|${r.isBESTGroup ? 'B' : ''}|${r.isCorrection ? 'C' : ''}`,
     r => r.isGroup || r.isBESTGroup
   );
 }
