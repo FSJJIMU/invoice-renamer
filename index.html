@@ -1100,20 +1100,32 @@ function resolveDuplicates(rows, groupKeyFn, targetFn) {
       (byStaff[s] = byStaff[s] || []).push(r);
     });
 
-    // 担当者不明が混ざる場合は全件 ※重複データ 扱い（安全側）
+    // 担当者不明が混ざる場合は全件 ※重複データ 扱い（安全側・連番なし）
     if (hasUnknown) {
       g.forEach((r, i) => {
-        r.dupPrefix = i === 0 ? '1' : `${i + 1} ※重複データ${i}`;
+        r.dupPrefix = i === 0 ? '' : `※重複データ${i}`;
         if (i > 0) dupTotal++;
       });
       return;
     }
 
-    // 全件に通し番号を振りつつ、同一担当者の2件目以降に ※重複データ を付与
+    const staffKeys = Object.keys(byStaff);
+
+    // 担当者が1人だけ（全部同じ人）→ 連番なし、2件目以降に ※重複データ
+    if (staffKeys.length === 1) {
+      byStaff[staffKeys[0]].forEach((r, i) => {
+        r.dupPrefix = i === 0 ? '' : `※重複データ${i}`;
+        if (i > 0) dupTotal++;
+      });
+      return;
+    }
+
+    // 担当者が複数 → 担当者ごとに連番を1つ割り当て
+    // 同一担当者内に複数ある場合は、2件目以降に ※重複データ を付与
     let seq = 0;
-    Object.keys(byStaff).forEach(s => {
+    staffKeys.forEach(s => {
+      seq++;
       byStaff[s].forEach((r, i) => {
-        seq++;
         r.dupPrefix = i === 0 ? String(seq) : `${seq} ※重複データ${i}`;
         if (i > 0) dupTotal++;
       });
