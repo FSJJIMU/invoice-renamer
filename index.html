@@ -1091,6 +1091,9 @@ function resolveDuplicates(rows, groupKeyFn, targetFn) {
   Object.values(groups).forEach(g => {
     if (g.length === 1) return;
 
+    // 元ファイル名順に並べる（同一担当者内の順序を安定させる）
+    g.sort((a, b) => (a.orig || '').localeCompare(b.orig || '', 'ja'));
+
     // 担当者名ごとにサブグループ化
     const byStaff = {};
     let hasUnknown = false;
@@ -1109,7 +1112,8 @@ function resolveDuplicates(rows, groupKeyFn, targetFn) {
       return;
     }
 
-    const staffKeys = Object.keys(byStaff);
+    // 担当者名の五十音順（文字コード順）でソート → 番号が常に安定する
+    const staffKeys = Object.keys(byStaff).sort((a, b) => a.localeCompare(b, 'ja'));
 
     // 担当者が1人だけ（全部同じ人）→ 連番なし、2件目以降に ※重複データ
     if (staffKeys.length === 1) {
