@@ -931,78 +931,75 @@ function normalize(text) {
 function parseTag(rawText) {
   const c = normalize(rawText);
   const idx = c.indexOf('##INV');
-  const raw = idx >= 0 ? c.slice(idx, idx + 80) : '（タグなし）';
+  const raw = idx >= 0 ? c.slice(idx, idx + 100) : '（タグなし）';
+  const T = '(?::担当=([^:#]+))?';  // 担当者名（オプショナル・常に末尾）
 
-  // BESTグループパターン（BESTグループはグループより先にマッチさせる）
-  let m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):BESTグループ:([^#]+)##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: m[4], found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: true, raw };
+  const base = (name, amount, date, period, flags, staff) => ({
+    name, amount: parseInt(amount), date, period,
+    staff: staff || null, found: true,
+    isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false,
+    isBEST: false, isBESTHoryuu: false, isBESTGroup: false,
+    ...flags, raw
+  });
+  const fix7 = d => d.slice(0,4) + '0' + d.slice(4);
 
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):BESTグループ:([^#]+)##/i);
-  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: m[4], found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: true, raw }; }
+  let m;
 
-  // BEST保留確定パターン（保留確定より先にマッチさせる）
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):BEST保留確定##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: true, isBESTGroup: false, raw };
+  // BESTグループ
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{8}):BESTグループ:([^:#]+)' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], m[3], m[4], { isBESTGroup: true }, m[5]);
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{7}):BESTグループ:([^:#]+)' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], fix7(m[3]), m[4], { isBESTGroup: true }, m[5]);
 
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):BEST保留確定##/i);
-  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: true, isBESTGroup: false, raw }; }
+  // BEST保留確定
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{8}):BEST保留確定' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], m[3], null, { isBESTHoryuu: true }, m[4]);
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{7}):BEST保留確定' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], fix7(m[3]), null, { isBESTHoryuu: true }, m[4]);
 
-  // BEST日払いパターン
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):BEST##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: true, isBESTHoryuu: false, isBESTGroup: false, raw };
+  // BEST日払い
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{8}):BEST' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], m[3], null, { isBEST: true }, m[4]);
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{7}):BEST' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], fix7(m[3]), null, { isBEST: true }, m[4]);
 
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):BEST##/i);
-  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: true, isBESTHoryuu: false, isBESTGroup: false, raw }; }
+  // JPR保留確定
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{8}):JPR保留確定' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], m[3], null, { isJPRHoryuu: true }, m[4]);
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{7}):JPR保留確定' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], fix7(m[3]), null, { isJPRHoryuu: true }, m[4]);
 
-  // JPR保留確定パターン（保留確定より先にマッチさせる）
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):JPR保留確定##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: true, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
+  // JPR日払い
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{8}):JPR' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], m[3], null, { isJPR: true }, m[4]);
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{7}):JPR' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], fix7(m[3]), null, { isJPR: true }, m[4]);
 
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):JPR保留確定##/i);
-  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: true, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw }; }
+  // グループ
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{8}):グループ:([^:#]+)' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], m[3], m[4], { isGroup: true }, m[5]);
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{7}):グループ:([^:#]+)' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], fix7(m[3]), m[4], { isGroup: true }, m[5]);
 
-  // JPR日払いパターン
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):JPR##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: true, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
+  // 保留確定
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{8}):保留確定' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], m[3], null, { isHoryuu: true }, m[4]);
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{7}):保留確定' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], fix7(m[3]), null, { isHoryuu: true }, m[4]);
 
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):JPR##/i);
-  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: true, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw }; }
+  // 日払い（8桁）
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{8})' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], m[3], null, {}, m[4]);
+  // 日払い（7桁）
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+):(\\d{7})' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], fix7(m[3]), null, {}, m[4]);
+  // 日付なし
+  m = c.match(new RegExp('##INV:([^:#]+):(-?\\d+)' + T + '##', 'i'));
+  if (m) return base(m[1], m[2], null, null, {}, m[3]);
 
-  // グループパターン: ##INV:名前:金額:日付:グループ:期間##
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):グループ:([^#]+)##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: m[4], found: true, isHoryuu: false, isGroup: true, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
-
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):グループ:([^#]+)##/i);
-  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: m[4], found: true, isHoryuu: false, isGroup: true, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw }; }
-
-  // 保留確定パターン
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8}):保留確定##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: true, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
-
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7}):保留確定##/i);
-  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: true, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw }; }
-
-  // パターン1: 8桁日付
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{8})##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: m[3], period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
-
-  // パターン2: 7桁日付
-  m = c.match(/##INV:([^:#]+):(-?\d+):(\d{7})##/i);
-  if (m) { const d = m[3]; const date = d.slice(0,4)+'0'+d.slice(4);
-    return { name: m[1], amount: parseInt(m[2]), date, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw }; }
-
-  // パターン3: 日付なし
-  m = c.match(/##INV:([^:#]+):(-?\d+)##/i);
-  if (m) return { name: m[1], amount: parseInt(m[2]), date: null, period: null, found: true, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
-
-  return { name: '', amount: -1, date: null, period: null, found: false, isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false, isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
+  return { name: '', amount: -1, date: null, period: null, staff: null, found: false,
+    isHoryuu: false, isGroup: false, isJPR: false, isJPRHoryuu: false,
+    isBEST: false, isBESTHoryuu: false, isBESTGroup: false, raw };
 }
 
 // ── PDF テキスト抽出 ──
@@ -1075,15 +1072,18 @@ function buildFilenameGroup(name, date, period, isCorrection, isBESTGroup, isX) 
 
 // ── 重複検出 ──
 function detectDuplicates(rows) {
+  // 担当者名がタグにあればキーに含める（同名義・別担当者を区別）
+  const dupKey = r => buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '', r.isJPR, r.isBEST)
+                      + '||' + (r.staff || '');
   const nameCount = {};
   rows.forEach(r => {
-    const key = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '', r.isJPR, r.isBEST);
+    const key = dupKey(r);
     nameCount[key] = (nameCount[key] || 0) + 1;
   });
   const tracker = {};
   let dupTotal = 0;
   rows.forEach(r => {
-    const key = buildFilename(r.name, r.amount, r.date, r.isX, r.isCorrection, '', r.isJPR, r.isBEST);
+    const key = dupKey(r);
     if (nameCount[key] > 1) {
       tracker[key] = (tracker[key] || 0) + 1;
       r.dupPrefix = tracker[key] === 1 ? '' : `※重複データ${tracker[key] - 1}`;
@@ -1097,17 +1097,19 @@ function detectDuplicates(rows) {
 
 // ── 重複検出（保留確定） ──
 function detectDuplicatesHoryuu(rows) {
+  const dupKey = r => buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, '')
+                      + '||' + (r.staff || '');
   const nameCount = {};
   rows.forEach(r => {
     if (!r.isHoryuu && !r.isJPRHoryuu && !r.isBESTHoryuu) { r.dupPrefix = ''; return; }
-    const key = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, '');
+    const key = dupKey(r);
     nameCount[key] = (nameCount[key] || 0) + 1;
   });
   const tracker = {};
   let dupTotal = 0;
   rows.forEach(r => {
     if (!r.isHoryuu && !r.isJPRHoryuu && !r.isBESTHoryuu) { r.dupPrefix = ''; return; }
-    const key = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, '');
+    const key = dupKey(r);
     if (nameCount[key] > 1) {
       tracker[key] = (tracker[key] || 0) + 1;
       // 重複がある場合は1件目から 1, 2, 3... を末尾に付与
@@ -1150,6 +1152,7 @@ async function processFiles(files) {
       date: p.date,
       month: month,
       period: p.period,
+      staff: p.staff,
       isX: p.amount === 0,
       isCorrection: false,
       isHoryuu: p.isHoryuu,
@@ -1264,8 +1267,9 @@ function addRow(idx) {
 
   // タグ状態テキスト
   let tagClass, tagText;
-  if (r.found && r.date) { tagClass = 'tag-ok'; tagText = `${ICON.check} タグ検出 ${ICON.cal} ${r.date}`; }
-  else if (r.found)       { tagClass = 'tag-warn'; tagText = `${ICON.check} タグ検出 ${ICON.warn} 日付なし`; }
+  const staffTxt = r.staff ? ` <span style="color:var(--g1)">/ ${escHtml(r.staff)}</span>` : '';
+  if (r.found && r.date) { tagClass = 'tag-ok'; tagText = `${ICON.check} タグ検出 ${ICON.cal} ${r.date}${staffTxt}`; }
+  else if (r.found)       { tagClass = 'tag-warn'; tagText = `${ICON.check} タグ検出 ${ICON.warn} 日付なし${staffTxt}`; }
   else                     { tagClass = 'tag-ng'; tagText = `${ICON.cross} タグなし`; }
 
   const amtDisplay = r.amount !== -1 ? r.amount : '';
@@ -1452,8 +1456,9 @@ function addRowHoryuu(idx) {
 
   const fname = buildFilenameHoryuu(r.name, r.date, r.isCorrection, r.isJPRHoryuu, r.isBESTHoryuu, r.isX, r.dupPrefix);
   const horyuuLabel = r.isJPRHoryuu ? 'JPR保留確定' : (r.isBESTHoryuu ? 'BEST保留確定' : '保留確定');
-  let tagClass = 'tag-ok', tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.cal} ${r.date}`;
-  if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.warn} 日付なし`; }
+  const staffTxt = r.staff ? ` <span style="color:var(--g1)">/ ${escHtml(r.staff)}</span>` : '';
+  let tagClass = 'tag-ok', tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.cal} ${r.date}${staffTxt}`;
+  if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.warn} 日付なし${staffTxt}`; }
 
   const prevClass = (r.isX || r.dupPrefix) ? 'is-x' : '';
 
