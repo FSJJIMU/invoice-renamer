@@ -1149,7 +1149,8 @@ function refreshAllPreviews() {
     }
     pv.textContent = fn;
     pv.title = fn;
-    pv.className = 'cell-preview' + ((r.isX || r.dupPrefix) ? ' is-x' : '');
+    const isWarn = r.isX || (r.dupPrefix && r.dupPrefix.includes('※重複データ'));
+    pv.className = 'cell-preview' + (isWarn ? ' is-x' : '');
   });
 }
 
@@ -1334,7 +1335,7 @@ function addRow(idx) {
   const amtDisplay = r.amount !== -1 ? r.amount : '';
   const isXClass = r.isX ? 'is-x' : '';
   const xText = r.isX ? '請求なし' : '請求あり';
-  const prevClass = (r.isX || r.dupPrefix) ? 'is-x' : '';
+  const prevClass = (r.isX || (r.dupPrefix && r.dupPrefix.includes('※重複データ'))) ? 'is-x' : '';
 
   row.innerHTML = `
     <div class="cell-orig">
@@ -1512,7 +1513,7 @@ function addRowHoryuu(idx) {
   let tagClass = 'tag-ok', tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.cal} ${r.date}${staffTxt}`;
   if (!r.date) { tagClass = 'tag-warn'; tagText = `${ICON.check} ${horyuuLabel}タグ検出 ${ICON.warn} 日付なし${staffTxt}`; }
 
-  const prevClass = (r.isX || r.dupPrefix) ? 'is-x' : '';
+  const prevClass = (r.isX || (r.dupPrefix && r.dupPrefix.includes('※重複データ'))) ? 'is-x' : '';
 
   row.innerHTML = `
     <div class="cell-orig">
